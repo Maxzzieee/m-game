@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { STEREOTYPE_ORDER, STEREOTYPES } from "@/lib/constants";
 import type { Game, Stereotype } from "@/lib/types";
 import { IconArrow, IconD20 } from "./Icons";
@@ -35,17 +35,17 @@ function FateRoll({
 }) {
   const [display, setDisplay] = useState<number | null>(null);
   const [settled, setSettled] = useState(false);
-  const started = useRef(false);
 
+  // No mount guard: the effect must survive strict-mode re-runs, and the
+  // component remounts per roll via the `key` prop at the call sites.
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
       setDisplay(roll);
       setSettled(true);
       return;
     }
+    setSettled(false);
     let ticks = 0;
     const id = setInterval(() => {
       ticks += 1;
@@ -228,6 +228,7 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
 
       {step === "roll_ses" && game && (
         <FateRoll
+          key="ses"
           title="Fate roll I · 1d100"
           subtitle="The household you were born into"
           roll={game.ses_roll}
@@ -238,6 +239,7 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
 
       {step === "roll_looks" && game && (
         <FateRoll
+          key="looks"
           title="Fate roll II · 1d100"
           subtitle="What puberty decided to do with you"
           roll={game.looks_roll}
