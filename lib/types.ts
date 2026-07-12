@@ -63,10 +63,14 @@ export interface Npc {
   meta: Record<string, unknown>;
 }
 
+export type RollMode = "normal" | "advantage" | "disadvantage";
+
 export interface DiceResult {
   stat: string; // e.g. "GUTS"
   dc: number;
-  d20: number; // raw 1..20
+  d20: number; // the KEPT die, 1..20 (nat 1/20 judged on this)
+  d20b: number | null; // the discarded die when mode != normal
+  mode: RollMode;
   statMod: number; // stat value applied
   stateMod: number; // mental-state modifier applied
   total: number;

@@ -47,11 +47,22 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
       },
       awaiting_roll: {
         type: ["object", "null"],
-        description: "Set when you presented a check and are waiting for the player to roll.",
+        description:
+          "Set ONLY when the player has committed to an action and the die is next. Never while offering choices.",
         properties: {
           stat: { type: "string", description: "BRAINS | FACE | BRAWN | GUTS" },
           dc: { type: "integer" },
           reason: { type: "string", description: "What the roll is for, short." },
+          mode: {
+            type: "string",
+            enum: ["normal", "advantage", "disadvantage"],
+            description:
+              "advantage = circumstances favour the player (they prepared, an ally helps, they exploit something they know). disadvantage = circumstances work against them (rushed, out of their depth, hostile audience). Default normal.",
+          },
+          mode_reason: {
+            type: "string",
+            description: "One short clause: why circumstances grant advantage/disadvantage.",
+          },
         },
       },
       stats: {

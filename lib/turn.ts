@@ -25,6 +25,8 @@ export interface AwaitingRoll {
   stat: string;
   dc: number;
   reason: string;
+  mode?: "normal" | "advantage" | "disadvantage";
+  mode_reason?: string; // why circumstances grant it, shown to the player
 }
 
 interface GameMeta {
@@ -80,7 +82,7 @@ export async function resolvePendingRoll(game: Game): Promise<DiceResult | null>
   const pending = meta.awaiting_roll;
   if (!pending) return null;
 
-  const dice = rollCheck(game, pending.stat, pending.dc);
+  const dice = rollCheck(game, pending.stat, pending.dc, pending.mode ?? "normal");
   await recordEvent(game, {
     role: "player",
     prose: `(rolled for: ${pending.reason})`,

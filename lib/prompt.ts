@@ -118,7 +118,11 @@ export function buildRecentBlock(events: GameEvent[]): string {
 }
 
 export function diceLine(d: DiceResult): string {
-  return `${d.stat} check DC ${d.dc}: d20 ${d.d20} ${sign(d.statMod)} stat ${sign(
+  const modeBit =
+    d.mode && d.mode !== "normal" && d.d20b !== null
+      ? ` [${d.mode}: rolled ${d.d20} & ${d.d20b}, kept ${d.d20}]`
+      : "";
+  return `${d.stat} check DC ${d.dc}: d20 ${d.d20}${modeBit} ${sign(d.statMod)} stat ${sign(
     d.stateMod,
   )} state = ${d.total} → ${d.outcome.toUpperCase()} (margin ${sign(d.margin)})`;
 }

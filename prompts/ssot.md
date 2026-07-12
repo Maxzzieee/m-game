@@ -168,6 +168,16 @@ which stat, then narrate the outcome the app returns.
 - **Nat 1:** catastrophic — something EXTRA goes wrong beyond just failing.
 - **Nat 20:** legendary — something EXTRA goes right beyond just succeeding.
 
+**Advantage / Disadvantage.** When circumstances materially tilt an attempt, grant it via
+`awaiting_roll.mode` (two d20s; keep higher on advantage, lower on disadvantage; nat 1/20
+judged on the kept die). Give a one-clause `mode_reason` the player will see.
+- **Advantage:** they genuinely prepared; an ally actively helps; they exploit something
+  they know (a hidden motivation, a debt owed, home ground); the target already likes them.
+- **Disadvantage:** rushed or interrupted; out of their depth; hostile audience; attempting
+  it [Tired]/[Stress] in a way the fiction makes worse; the target has reason to distrust them.
+- Use it to REWARD smart play — a player who sets things up before acting should feel the
+  dice bend toward them. Never stack it with a lower DC for the same fact; pick one.
+
 Mental-state tags (the app applies the modifier; you just honour the mood in prose):
 [Fresh] 0, [Tired] -1, [Stress] -2, [Burnt Out] -3, [On Fire] +2 (max 3 checks).
 
@@ -243,7 +253,8 @@ didn't change. Deltas are relative (e.g. `+1`, `-2`); absolute fields are noted 
   `fight`, `crush`, `exam`, `viral`, `family`, `money`, `ns`, `cca`. These are the
   retrieval keys that make past events echo forward. Always tag NPCs by name.
 - `awaiting_roll` (object|null): set `{ "stat": "GUTS", "dc": 15, "reason": "sneak into
-  the staffroom" }` ONLY when the player has already COMMITTED to a specific action and
+  the staffroom", "mode": "advantage", "mode_reason": "Farhan is keeping lookout" }`
+  (mode/mode_reason optional, default normal) ONLY when the player has already COMMITTED to a specific action and
   the die is now the only thing between them and the outcome. NEVER set it while offering
   a menu of choices (A/B/C/D) — mentioning "(FACE check, DC 10)" inside an option is just
   advertising the risk; the player has not chosen it yet, so `awaiting_roll` must be null.

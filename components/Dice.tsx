@@ -31,8 +31,20 @@ export function DiceChip({ dice }: { dice: DiceResult }) {
       <IconD20 className="h-5 w-5 shrink-0" />
       <span style={{ color: statColor(dice.stat) }}>{dice.stat}</span>
       <span className="opacity-60">vs DC {dice.dc}</span>
+      {dice.mode && dice.mode !== "normal" && (
+        <span
+          className={`rounded-md border px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${
+            dice.mode === "advantage" ? "border-jade/60 text-jade" : "border-chili/60 text-chili"
+          }`}
+        >
+          {dice.mode === "advantage" ? "ADV" : "DIS"}
+        </span>
+      )}
       <span className="opacity-80">
         d20&nbsp;{dice.d20}
+        {dice.d20b !== null && dice.d20b !== undefined && (
+          <span className="line-through opacity-50">&nbsp;{dice.d20b}</span>
+        )}
         {dice.statMod !== 0 && ` ${dice.statMod > 0 ? "+" : ""}${dice.statMod}`}
         {dice.stateMod !== 0 && ` ${dice.stateMod > 0 ? "+" : ""}${dice.stateMod}`} ={" "}
         {dice.total}
@@ -54,6 +66,7 @@ export function RollPrompt({
   onRoll: () => void;
 }) {
   const c = statColor(awaiting.stat);
+  const mode = awaiting.mode ?? "normal";
   return (
     <div
       className="animate-fadeup rounded-2xl border bg-void-800 p-5 shadow-card"
@@ -69,6 +82,18 @@ export function RollPrompt({
         check · <span className="font-mono text-base">DC {awaiting.dc}</span>
         <span className="italic text-dim"> — {awaiting.reason}</span>
       </p>
+      {mode !== "normal" && (
+        <p className="mt-2 flex items-center gap-2 text-sm">
+          <span
+            className={`rounded-md border px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider ${
+              mode === "advantage" ? "border-jade/60 text-jade" : "border-chili/60 text-chili"
+            }`}
+          >
+            {mode === "advantage" ? "Advantage · roll 2, keep higher" : "Disadvantage · roll 2, keep lower"}
+          </span>
+          {awaiting.mode_reason && <span className="italic text-dim">{awaiting.mode_reason}</span>}
+        </p>
+      )}
       <button
         onClick={onRoll}
         disabled={rolling}
@@ -158,6 +183,12 @@ export function RollOverlay({ dice }: { dice: DiceResult | null }) {
             >
               {label}
             </p>
+            {dice.mode !== "normal" && dice.d20b !== null && (
+              <p className="mt-1.5 font-mono text-xs uppercase tracking-widest text-dim">
+                {dice.mode === "advantage" ? "advantage" : "disadvantage"} · rolled {dice.d20} &{" "}
+                <span className="line-through">{dice.d20b}</span> · kept {dice.d20}
+              </p>
+            )}
             <p className="mt-2 font-mono text-sm text-dim">
               <span style={{ color: statColor(dice.stat) }}>{dice.stat}</span> · d20 {dice.d20}
               {dice.statMod !== 0 && ` ${dice.statMod > 0 ? "+" : ""}${dice.statMod}`}

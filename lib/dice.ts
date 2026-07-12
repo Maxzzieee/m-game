@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { DiceResult, Game, MentalState, StatKey } from "./types";
+import { DiceResult, Game, MentalState, RollMode, StatKey } from "./types";
 
 // Server-side, auditable d20. This is what enforces "the DM never rolls for the
 // player" — the die lives here, not in the model.
@@ -24,23 +24,41 @@ function d20(): number {
   return (crypto.randomInt(20) as number) + 1; // 1..20
 }
 
-export function rollCheck(game: Game, statLabel: string, dc: number): DiceResult {
+export function rollCheck(
+  game: Game,
+  statLabel: string,
+  dc: number,
+  mode: RollMode = "normal",
+): DiceResult {
   const key = STAT_MAP[statLabel.toUpperCase()] ?? "guts";
   const statMod = game[key] as number;
   const stateMod = STATE_MOD[game.mental_state] ?? 0;
-  const raw = d20();
-  const total = raw + statMod + stateMod;
+
+  // Advantage / disadvantage: two dice, keep higher / lower. Nat 1 / Nat 20 is
+  // judged on the KEPT die (5e convention).
+  const a = d20();
+  let kept = a;
+  let discarded: number | null = null;
+  if (mode === "advantage" || mode === "disadvantage") {
+    const b = d20();
+    kept = mode === "advantage" ? Math.max(a, b) : Math.min(a, b);
+    discarded = mode === "advantage" ? Math.min(a, b) : Math.max(a, b);
+  }
+
+  const total = kept + statMod + stateMod;
 
   let outcome: DiceResult["outcome"];
-  if (raw === 1) outcome = "nat1";
-  else if (raw === 20) outcome = "nat20";
+  if (kept === 1) outcome = "nat1";
+  else if (kept === 20) outcome = "nat20";
   else if (total >= dc) outcome = "success";
   else outcome = "fail";
 
   return {
     stat: statLabel.toUpperCase(),
     dc,
-    d20: raw,
+    d20: kept,
+    d20b: discarded,
+    mode,
     statMod,
     stateMod,
     total,
