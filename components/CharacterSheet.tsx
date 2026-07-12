@@ -8,10 +8,10 @@ import type { Game, Npc } from "@/lib/types";
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 const STAT_BAR: Record<string, string> = {
-  Brains: "#6fb7dd",
-  Face: "#e08cb8",
-  Brawn: "#e07a4a",
-  Guts: "#f0a63e",
+  Brains: "#29708f",
+  Face: "#a84a78",
+  Brawn: "#a64f24",
+  Guts: "#93600d",
 };
 
 function Stat({ label, n }: { label: string; n: number }) {
@@ -162,6 +162,22 @@ export default function CharacterSheet({
         <br />
         {game.looks_tier} · turn {game.turn_no}
       </p>
+
+      <button
+        onClick={async () => {
+          if (
+            !window.confirm(
+              `Start a new life? This deletes the current save — everything ${game.char_name} lived through, gone. Cannot undo.`,
+            )
+          )
+            return;
+          await fetch("/api/reset", { method: "POST" });
+          window.location.reload();
+        }}
+        className="w-full cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-faint transition-colors duration-200 hover:border-chili/50 hover:text-chili"
+      >
+        Start a new life
+      </button>
 
       {shopOpen && (
         <Shop

@@ -113,14 +113,14 @@ export function RollOverlay({ dice }: { dice: DiceResult | null }) {
   }, [dice]);
 
   const outcomeColor = !dice
-    ? "#ece5d8"
+    ? "#33291d"
     : dice.outcome === "nat20"
-      ? "#f0a63e"
+      ? "#93600d"
       : dice.outcome === "nat1"
-        ? "#e5533d"
+        ? "#bf4028"
         : dice.outcome === "success"
-          ? "#57b389"
-          : "#a1957f";
+          ? "#2a6e50"
+          : "#75674f";
 
   const label = !dice
     ? ""
@@ -145,7 +145,7 @@ export function RollOverlay({ dice }: { dice: DiceResult | null }) {
           <IconD20 className="absolute inset-0 h-full w-full" />
           <span
             className="relative font-mono text-5xl font-medium"
-            style={{ color: settled ? outcomeColor : "#ece5d8" }}
+            style={{ color: settled ? outcomeColor : "#33291d" }}
           >
             {display}
           </span>

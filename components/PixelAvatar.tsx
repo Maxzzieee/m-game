@@ -138,9 +138,9 @@ export default function PixelAvatar({ game, size = 120 }: { game: Game; size?: n
     rect(px, 9, 10, 16, 17, skin);
   }
 
-  // --- shoes ---
-  rect(px, 4, 6, 18, 18, "#e8e4da");
-  rect(px, 9, 11, 18, 18, "#e8e4da");
+  // --- shoes (grey so they read on the light sheet) ---
+  rect(px, 4, 6, 18, 18, "#a9a193");
+  rect(px, 9, 11, 18, 18, "#a9a193");
 
   const onFire = game.mental_state === "On Fire";
 
@@ -152,7 +152,7 @@ export default function PixelAvatar({ game, size = 120 }: { game: Game; size?: n
       shapeRendering="crispEdges"
       role="img"
       aria-label={`Pixel avatar of ${game.char_name}`}
-      className={onFire ? "drop-shadow-[0_0_10px_rgba(240,166,62,0.6)]" : undefined}
+      className={onFire ? "drop-shadow-[0_0_10px_rgba(220,150,46,0.7)]" : undefined}
     >
       {px.map(([x, y, c], i) => (
         <rect key={i} x={x} y={y} width={1} height={1} fill={c} />

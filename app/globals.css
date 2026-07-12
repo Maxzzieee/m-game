@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
@@ -13,20 +13,20 @@ body {
 
 body {
   @apply bg-void-900 text-parchment antialiased;
-  /* distant sodium-lamp warmth top-right, void-deck green low-left */
+  /* morning light top-right, a soft green cool low-left — kopitiam at 8am */
   background-image:
-    radial-gradient(1100px 520px at 85% -8%, rgba(240, 166, 62, 0.07), transparent 70%),
-    radial-gradient(900px 480px at -5% 108%, rgba(87, 179, 137, 0.05), transparent 70%);
+    radial-gradient(1100px 520px at 85% -8%, rgba(232, 178, 84, 0.14), transparent 70%),
+    radial-gradient(900px 480px at -5% 108%, rgba(96, 158, 124, 0.08), transparent 70%);
   background-attachment: fixed;
 }
 
-/* faint film grain so flat panels don't feel dead */
+/* faint paper grain so flat panels feel like stock, not screen */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: 0.028;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   z-index: 1;
 }
@@ -36,7 +36,7 @@ body > * {
 }
 
 ::selection {
-  background: rgba(240, 166, 62, 0.25);
+  background: rgba(147, 96, 13, 0.22);
 }
 
 ::-webkit-scrollbar {
@@ -52,14 +52,15 @@ body > * {
 
 /* visible keyboard focus everywhere */
 :focus-visible {
-  outline: 2px solid rgba(240, 166, 62, 0.7);
+  outline: 2px solid rgba(147, 96, 13, 0.75);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
 /* ---------- narration typography ---------- */
+/* Nunito for long reading; Bricolage only for the drop cap + headings. */
 .prose-narration {
-  @apply max-w-prose font-serif text-[1.075rem] leading-[1.75] text-parchment/95;
+  @apply max-w-prose font-sans text-[1.05rem] leading-[1.8] text-parchment;
 }
 .prose-narration p {
   @apply mb-5;
@@ -71,7 +72,7 @@ body > * {
   @apply font-semibold text-neon;
 }
 .prose-narration em {
-  @apply italic text-parchment;
+  @apply italic;
 }
 
 /* ---------- animations ---------- */
@@ -101,8 +102,8 @@ body > * {
 }
 
 @keyframes pulseglow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 166, 62, 0); }
-  50% { box-shadow: 0 0 26px -4px rgba(240, 166, 62, 0.45); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(147, 96, 13, 0); }
+  50% { box-shadow: 0 0 24px -4px rgba(147, 96, 13, 0.4); }
 }
 .animate-pulseglow {
   animation: pulseglow 2.2s ease-in-out infinite;

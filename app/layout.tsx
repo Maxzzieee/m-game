@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
+import { Bricolage_Grotesque, IBM_Plex_Mono, Nunito } from "next/font/google";
 import "./globals.css";
 
-// Newsreader: designed for long-form reading — carries the narration.
-const serif = Newsreader({
+// Bricolage: characterful display face — headings, titles, the drop cap.
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600"],
-  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
 });
 
-const sans = IBM_Plex_Sans({
+// Nunito: rounded, friendly, and easy to read for long narration.
+const sans = Nunito({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
 });
 
@@ -28,14 +29,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0e0c09",
+  themeColor: "#f5efe3",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="font-sans">{children}</body>
     </html>
   );

@@ -5,23 +5,23 @@ import type { Game } from "./types";
 
 // ---- stat colour language ----------------------------------------------------
 export const STAT_COLOR: Record<string, string> = {
-  BRAINS: "#6fb7dd",
-  FACE: "#e08cb8",
-  BRAWN: "#e07a4a",
-  GUTS: "#f0a63e",
+  BRAINS: "#29708f",
+  FACE: "#a84a78",
+  BRAWN: "#a64f24",
+  GUTS: "#93600d",
 };
-export const statColor = (stat: string) => STAT_COLOR[stat.toUpperCase()] ?? "#f0a63e";
+export const statColor = (stat: string) => STAT_COLOR[stat.toUpperCase()] ?? "#93600d";
 
 // ---- scene ambiance ----------------------------------------------------------
 // Tint the room to match the scene. Derived from the latest DM event's tags +
 // mental state; rendered as a very low-alpha radial wash.
 const AMBIANCE: Array<{ match: string[]; color: string }> = [
-  { match: ["fight", "gang", "pai kia"], color: "rgba(229, 83, 61, 0.10)" },
-  { match: ["crush", "love", "date"], color: "rgba(224, 140, 184, 0.09)" },
-  { match: ["ns", "tekong", "camp", "ippt"], color: "rgba(96, 128, 74, 0.11)" },
-  { match: ["exam", "school", "class", "study"], color: "rgba(111, 183, 221, 0.08)" },
-  { match: ["night", "void deck", "supper", "mrt"], color: "rgba(58, 84, 138, 0.12)" },
-  { match: ["family", "home", "cny"], color: "rgba(240, 166, 62, 0.09)" },
+  { match: ["fight", "gang", "pai kia"], color: "rgba(191, 64, 40, 0.10)" },
+  { match: ["crush", "love", "date"], color: "rgba(200, 92, 140, 0.10)" },
+  { match: ["ns", "tekong", "camp", "ippt"], color: "rgba(88, 122, 66, 0.13)" },
+  { match: ["exam", "school", "class", "study"], color: "rgba(64, 130, 168, 0.10)" },
+  { match: ["night", "void deck", "supper", "mrt"], color: "rgba(70, 92, 138, 0.13)" },
+  { match: ["family", "home", "cny"], color: "rgba(220, 150, 46, 0.14)" },
 ];
 
 export function ambianceFor(tags: string[] | undefined, game: Game): string {
@@ -29,9 +29,9 @@ export function ambianceFor(tags: string[] | undefined, game: Game): string {
   for (const a of AMBIANCE) {
     if (a.match.some((m) => lower.some((t) => t.includes(m)))) return a.color;
   }
-  if (game.mental_state === "Burnt Out") return "rgba(229, 83, 61, 0.06)";
-  if (game.mental_state === "On Fire") return "rgba(240, 166, 62, 0.12)";
-  return "rgba(240, 166, 62, 0.05)";
+  if (game.mental_state === "Burnt Out") return "rgba(191, 64, 40, 0.07)";
+  if (game.mental_state === "On Fire") return "rgba(220, 150, 46, 0.16)";
+  return "rgba(220, 150, 46, 0.08)";
 }
 
 // ---- choice parsing ----------------------------------------------------------
