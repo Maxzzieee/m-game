@@ -25,5 +25,6 @@ export async function GET() {
     npcs,
     transcript: recent,
     awaiting_roll: meta.awaiting_roll ?? null,
+    pending_stat_boost: meta.pending_stat_boost ?? false,
   });
 }

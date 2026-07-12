@@ -32,6 +32,8 @@ export function buildStateBlock(
   seeds: Seed[],
   journal: ArcJournal | null,
   karmaCashIn: "good" | "bad" | null,
+  worldNotes: string[] = [],
+  pastCanon: string[] = [],
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -62,10 +64,22 @@ export function buildStateBlock(
     for (const s of seeds) lines.push(`- (arc ${s.arc_created}) ${s.description}`);
   }
 
+  if (pastCanon.length) {
+    lines.push("");
+    lines.push("LIFE CANON (closed arcs — never contradict these):");
+    for (const c of pastCanon) lines.push(c);
+  }
+
   if (journal?.body) {
     lines.push("");
     lines.push("Arc journal so far (compressed earlier events):");
     lines.push(journal.body);
+  }
+
+  if (worldNotes.length) {
+    lines.push("");
+    lines.push("OFFSCREEN, since the last session (weave in as lived reality, never a bulletin):");
+    for (const n of worldNotes) lines.push(`- ${n}`);
   }
 
   if (karmaCashIn) {

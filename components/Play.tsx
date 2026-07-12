@@ -57,6 +57,56 @@ const TOAST_TONE: Record<DeltaToast["tone"], string> = {
   state: "border-parchment/40 text-parchment",
 };
 
+const GROWTH_STATS = [
+  { key: "brains", label: "Brains", color: "#29708f", blurb: "The mugging finally compounds." },
+  { key: "face", label: "Face", color: "#a84a78", blurb: "You learned how to be liked." },
+  { key: "brawn", label: "Brawn", color: "#a64f24", blurb: "The body caught up." },
+  { key: "guts", label: "Guts", color: "#93600d", blurb: "Fear got smaller." },
+] as const;
+
+// Arc-transition ceremony: the years changed you. Pick how.
+function GrowthModal({ game, onPicked }: { game: Game; onPicked: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center bg-void-900/95 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md animate-fadeup rounded-2xl border border-void-700 bg-void-800 p-7 text-center shadow-card">
+        <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-dim">
+          Arc {game.arc} · {game.arc_name}
+        </p>
+        <h2 className="mt-2 font-serif text-3xl font-medium">You&apos;ve grown.</h2>
+        <p className="mx-auto mt-3 max-w-[36ch] text-sm leading-relaxed text-dim">
+          Time did what time does. Choose what the last chapter of your life actually
+          taught you — one stat, permanently +1.
+        </p>
+        <div className="mt-6 grid grid-cols-2 gap-2.5">
+          {GROWTH_STATS.map((s) => (
+            <button
+              key={s.key}
+              disabled={busy || (game[s.key] as number) >= 5}
+              onClick={async () => {
+                setBusy(true);
+                await fetch("/api/boost", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ stat: s.key }),
+                });
+                await onPicked();
+              }}
+              className="cursor-pointer rounded-xl border border-void-700 bg-void-900/50 p-3.5 text-left transition-colors duration-200 hover:bg-void-900 disabled:cursor-default disabled:opacity-40"
+              style={{ borderColor: `${s.color}55` }}
+            >
+              <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: s.color }}>
+                {s.label} +1
+              </span>
+              <p className="mt-1 text-xs leading-snug text-dim">{s.blurb}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Play({ initial }: { initial: Snapshot; reload: () => void }) {
   const [game, setGame] = useState<Game>(initial.game!);
   const [npcs, setNpcs] = useState<Npc[]>(initial.npcs);
@@ -64,6 +114,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   const [awaiting, setAwaiting] = useState<AwaitingRoll | null>(initial.awaiting_roll);
 
   const [live, setLive] = useState<{ player?: string; dice?: DiceResult; dm?: string }>({});
+  const [pendingBoost, setPendingBoost] = useState(!!initial.pending_stat_boost);
   const [streaming, setStreaming] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [overlay, setOverlay] = useState<{ open: boolean; dice: DiceResult | null }>({
@@ -96,6 +147,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setNpcs(data.npcs ?? []);
     setEvents(data.transcript ?? []);
     setAwaiting(data.awaiting_roll ?? null);
+    setPendingBoost(!!data.pending_stat_boost);
   }, []);
 
   const streamTurn = useCallback(
@@ -193,6 +245,8 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
       />
 
       {overlay.open && <RollOverlay dice={overlay.dice} />}
+
+      {pendingBoost && !streaming && <GrowthModal game={game} onPicked={refreshState} />}
 
       {/* consequence toasts */}
       {toasts.length > 0 && (

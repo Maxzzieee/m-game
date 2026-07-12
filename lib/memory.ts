@@ -39,6 +39,20 @@ export async function getPendingSeeds(gameId: string): Promise<Seed[]> {
   return (data as Seed[]) ?? [];
 }
 
+// Canon facts of every CLOSED arc — the permanent truths of this life.
+export async function getPastCanon(gameId: string, currentArc: number): Promise<string[]> {
+  const { data } = await db()
+    .from("arc_journal")
+    .select("arc, canon")
+    .eq("game_id", gameId)
+    .lt("arc", currentArc)
+    .not("canon", "is", null)
+    .order("arc", { ascending: true });
+  return ((data as Array<{ arc: number; canon: string }>) ?? []).map(
+    (r) => `Arc ${r.arc}:\n${r.canon}`,
+  );
+}
+
 export async function getArcJournal(gameId: string, arc: number): Promise<ArcJournal | null> {
   const { data } = await db()
     .from("arc_journal")

@@ -12,6 +12,7 @@ export interface Snapshot {
   npcs: Npc[];
   transcript: GameEvent[];
   awaiting_roll: AwaitingRoll | null;
+  pending_stat_boost?: boolean;
 }
 
 type Phase = "loading" | "gate" | "creation" | "play";
@@ -39,6 +40,8 @@ export default function Game() {
         return;
       }
       await loadState();
+      // Fire-and-forget: let the offscreen world move if you've been away.
+      void fetch("/api/worldsim", { method: "POST" }).catch(() => {});
     })();
   }, [loadState]);
 

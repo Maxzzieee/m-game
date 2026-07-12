@@ -78,3 +78,38 @@ export async function maybeSummarize(game: Game): Promise<void> {
   const ids = events.map((e) => e.id);
   await db().from("events").update({ summarized: true }).in("id", ids);
 }
+
+// When an arc closes, distill its whole journal into a handful of permanent
+// "canon facts" — the load-bearing truths later arcs must never contradict.
+export async function closeArcCanon(game: Game, closedArc: number): Promise<void> {
+  const { data: jrow } = await db()
+    .from("arc_journal")
+    .select("*")
+    .eq("game_id", game.id)
+    .eq("arc", closedArc)
+    .maybeSingle();
+  const journal = jrow as ArcJournal | null;
+  if (!journal?.body || journal.canon) return;
+
+  const resp = await anthropic().messages.create({
+    model: MODELS.summarizer,
+    max_tokens: 400,
+    messages: [
+      {
+        role: "user",
+        content: [
+          `An arc of a life-sim has closed. Distill this journal into 4-6 permanent canon facts —`,
+          `the truths the rest of the character's life must never contradict: relationships won or`,
+          `broken, reputations earned, promises made, wounds taken. Terse bullet lines, no prose.`,
+          "",
+          journal.body,
+        ].join("\n"),
+      },
+    ],
+  });
+
+  const canon = resp.content.find((b) => b.type === "text")?.text?.trim();
+  if (canon) {
+    await db().from("arc_journal").update({ canon }).eq("id", journal.id);
+  }
+}

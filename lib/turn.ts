@@ -1,5 +1,5 @@
 import { runDmTurn } from "./agents/dm";
-import { maybeSummarize } from "./agents/summarizer";
+import { closeArcCanon, maybeSummarize } from "./agents/summarizer";
 import { maybeKarmaCashIn } from "./game";
 import {
   buildMemoriesBlock,
@@ -11,6 +11,7 @@ import {
   deriveSearchTags,
   getActiveNpcs,
   getArcJournal,
+  getPastCanon,
   getPendingSeeds,
   getRecentEvents,
   getRelevantMemories,
@@ -29,6 +30,8 @@ export interface AwaitingRoll {
 interface GameMeta {
   awaiting_roll?: AwaitingRoll | null;
   last_roll?: DiceResult | null;
+  world_notes?: string[] | null;
+  pending_stat_boost?: boolean;
 }
 
 export function getMeta(game: Game): GameMeta {
@@ -118,8 +121,12 @@ export async function runStoryTurn(
     getPendingSeeds(game.id),
     getRecentEvents(game.id),
   ]);
-  const journal = await getArcJournal(game.id, game.arc);
+  const [journal, pastCanon] = await Promise.all([
+    getArcJournal(game.id, game.arc),
+    getPastCanon(game.id, game.arc),
+  ]);
   const karmaCashIn = await maybeKarmaCashIn(game);
+  const worldNotes = getMeta(game).world_notes ?? [];
 
   // Reputation-echo retrieval: what old scenes are relevant right now?
   const searchSeed =
@@ -127,7 +134,15 @@ export async function runStoryTurn(
   const tags = deriveSearchTags(searchSeed, npcs);
   const memories = await getRelevantMemories(game.id, tags, game.turn_no);
 
-  const stateBlock = buildStateBlock(game, npcs, seeds, journal, karmaCashIn);
+  const stateBlock = buildStateBlock(
+    game,
+    npcs,
+    seeds,
+    journal,
+    karmaCashIn,
+    worldNotes,
+    pastCanon,
+  );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
 
@@ -139,7 +154,10 @@ export async function runStoryTurn(
     diceResult: mode.kind === "resolve" ? mode.dice : null,
   });
 
-  const { text, delta } = await runDmTurn(userMessage, { useBig: opts.big, onText: opts.onText });
+  // Karma cash-ins are pivotal scenes — route them to the big model.
+  const useBig = opts.big || karmaCashIn !== null;
+
+  const { text, delta } = await runDmTurn(userMessage, { useBig, onText: opts.onText });
 
   // Persist the DM scene.
   await recordEvent(game, {
@@ -150,16 +168,29 @@ export async function runStoryTurn(
   });
 
   // Apply the structured delta to the authoritative ledger.
+  const closingArc = game.arc;
   const updated = await applyDelta(game, delta);
 
-  // Stash any awaiting-roll for the roll endpoint; clear a consumed roll.
+  // Stash any awaiting-roll; clear the consumed roll and consumed world notes.
   await setMeta(updated.id, {
     awaiting_roll: delta.awaiting_roll ?? null,
     last_roll: null,
+    world_notes: null,
+    // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
+    ...(delta.advance ? { pending_stat_boost: true } : {}),
   });
 
   // Fold old scenes into the journal if we've grown past the verbatim window.
   await maybeSummarize(updated);
+
+  // On arc transition, compress the closed arc's journal into canon facts.
+  if (delta.advance) {
+    try {
+      await closeArcCanon(updated, closingArc);
+    } catch {
+      // canon compression failing must never block play
+    }
+  }
 
   return { game: updated };
 }
