@@ -261,7 +261,38 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         {/* Action bar */}
         <div className="mt-5 border-t border-void-700/70 pt-4">
           {awaiting ? (
-            <RollPrompt awaiting={awaiting} rolling={rolling} onRoll={roll} />
+            <div className="space-y-3">
+              <RollPrompt awaiting={awaiting} rolling={rolling} onRoll={roll} />
+              {/* escape hatch: a pending check never removes your agency */}
+              <div className="flex items-end gap-2.5">
+                <label htmlFor="action-alt" className="sr-only">
+                  Do something else instead
+                </label>
+                <textarea
+                  id="action-alt"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void send();
+                    }
+                  }}
+                  rows={1}
+                  disabled={busy}
+                  placeholder="…or back out and do something else instead"
+                  className="max-h-32 flex-1 resize-none rounded-xl border border-void-700 bg-void-800 px-3.5 py-2.5 text-sm leading-relaxed shadow-card outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/60 disabled:opacity-50"
+                />
+                <button
+                  onClick={() => void send()}
+                  disabled={busy || !input.trim()}
+                  aria-label="Do something else"
+                  className="cursor-pointer rounded-xl border border-void-700 px-4 py-2.5 text-sm font-semibold text-dim transition-colors duration-200 hover:border-neon/50 hover:text-neon disabled:cursor-default disabled:opacity-40"
+                >
+                  Act
+                </button>
+              </div>
+            </div>
           ) : (
             <div>
               {choices.length > 0 && (

@@ -205,8 +205,12 @@ didn't change. Deltas are relative (e.g. `+1`, `-2`); absolute fields are noted 
 - `tags` (string[]): entities/themes present — NPC names, location, and theme tags like
   `fight`, `crush`, `exam`, `viral`, `family`, `money`, `ns`, `cca`. These are the
   retrieval keys that make past events echo forward. Always tag NPCs by name.
-- `awaiting_roll` (object|null): if you presented a check and are waiting, set
-  `{ "stat": "GUTS", "dc": 15, "reason": "sneak into the staffroom" }`. Otherwise null.
+- `awaiting_roll` (object|null): set `{ "stat": "GUTS", "dc": 15, "reason": "sneak into
+  the staffroom" }` ONLY when the player has already COMMITTED to a specific action and
+  the die is now the only thing between them and the outcome. NEVER set it while offering
+  a menu of choices (A/B/C/D) — mentioning "(FACE check, DC 10)" inside an option is just
+  advertising the risk; the player has not chosen it yet, so `awaiting_roll` must be null.
+  Forcing a roll the player didn't choose steals their agency — the cardinal sin.
 - `stats` (object): deltas, e.g. `{ "guts": 1 }`.
 - `reputation` (object): deltas, e.g. `{ "street": 1, "system": -1 }`.
 - `karma` (int): delta, e.g. `2` or `-3`.
