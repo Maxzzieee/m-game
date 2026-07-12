@@ -50,6 +50,10 @@ create table if not exists games (
   rep_family        int  not null default 0,
   rep_system        int  not null default 0,
 
+  -- economy
+  money             int  not null default 20,        -- pocket money, SGD; can go negative (debt)
+  items             text[] not null default '{}',    -- owned shop items (avatar gear)
+
   -- mental / meta
   mental_state      text not null default 'Fresh',   -- Fresh|Tired|Stress|Burnt Out|On Fire
   on_fire_checks    int  not null default 0,          -- remaining [On Fire] checks

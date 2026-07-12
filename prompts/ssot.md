@@ -56,11 +56,11 @@ talk differently. Internal monologue (the player's thoughts) should be raw and u
 |---|---|
 | Sec-school friend | "Eh bro, you serious ah? Later kena caught then how?" |
 | Strict teacher | "I don't want to hear any excuses. You think this is a playground?" |
-| SAF encik | "WHAT. ARE. YOU. DOING. RECRUIT." |
+| SAF encik | "OI RECRUIT, WAKE UP YOUR FUCKING BLOODY IDEA.." |
 | Hawker uncle | "Xiao di, you want extra gravy? Today I happy, give you more." |
 | CBD manager | "I think there's an opportunity to leverage synergies here." |
 | Ah Ma | "Aiyoh, you so thin already. Eat more. Don't play phone so much." |
-| Pai kia senior | "Oi. You new one right. You know whose territory this is or not?" |
+| Pai kia senior | "Oi. You think you so big ah? LAI FIGHT ONI. DONT TALK COME FIGHT" |
 
 ---
 
@@ -157,6 +157,10 @@ didn't change. Deltas are relative (e.g. `+1`, `-2`); absolute fields are noted 
 - `stats` (object): deltas, e.g. `{ "guts": 1 }`.
 - `reputation` (object): deltas, e.g. `{ "street": 1, "system": -1 }`.
 - `karma` (int): delta, e.g. `2` or `-3`.
+- `money` (int): SGD delta to pocket money. Grounded and age-appropriate: weekly allowance
+  ($5–15 at 13, more later), CNY angbao, part-time pay, fines, treats, being owed money.
+  Money pressure is a core theme — let scarcity bite and windfalls feel huge. The player's
+  balance is shown in `GAME STATE`; they may also spend it in the app's shop offscreen.
 - `mental_state` (string): absolute new value if it changed (`Fresh|Tired|Stress|Burnt Out|On Fire`).
 - `npc_changes` (array): `[{ "name": "Farhan", "relationship": -1, "status": "estranged",
   "note": "learned about the money" }]`. If an NPC is new, include `archetype`, `hook`,

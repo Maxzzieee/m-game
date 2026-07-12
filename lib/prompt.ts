@@ -42,6 +42,7 @@ export function buildStateBlock(
   lines.push(`Stats: ${statLine(game)}`);
   lines.push(`Reputation: ${repLine(game)}`);
   lines.push(`Mental state: ${game.mental_state}`);
+  lines.push(`Pocket money: $${game.money}${game.money < 0 ? " (IN DEBT)" : ""}`);
   lines.push(`Confirm Plus Chop: ${game.confirm_chop ? "AVAILABLE this arc" : "used"}`);
 
   if (npcs.length) {

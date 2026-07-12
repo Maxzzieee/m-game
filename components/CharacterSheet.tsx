@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import PixelAvatar from "./PixelAvatar";
+import Shop from "./Shop";
 import type { Game, Npc } from "@/lib/types";
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
@@ -56,15 +59,40 @@ const MENTAL_TONE: Record<string, string> = {
   "On Fire": "text-neon border-neon bg-neon/10 shadow-glow",
 };
 
-export default function CharacterSheet({ game, npcs }: { game: Game; npcs: Npc[] }) {
+export default function CharacterSheet({
+  game,
+  npcs,
+  onRefresh,
+}: {
+  game: Game;
+  npcs: Npc[];
+  onRefresh?: () => Promise<void>;
+}) {
+  const [shopOpen, setShopOpen] = useState(false);
+
   return (
     <div className="space-y-7">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0 rounded-xl border border-void-700 bg-void-900/60 p-2">
+          <PixelAvatar game={game} size={88} />
+        </div>
+        <div className="min-w-0">
+          <h2 className="font-serif text-2xl font-medium leading-tight">{game.char_name}</h2>
+          <p className="mt-0.5 text-sm text-dim">
+            Age {game.age} · Arc {game.arc}
+          </p>
+          <p className="mt-2 font-mono text-sm text-neon">${game.money}</p>
+          <button
+            onClick={() => setShopOpen(true)}
+            className="mt-1.5 cursor-pointer rounded-lg border border-void-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-dim transition-colors duration-200 hover:border-neon/50 hover:text-neon"
+          >
+            Pasar malam
+          </button>
+        </div>
+      </div>
+
       <div>
-        <h2 className="font-serif text-2xl font-medium">{game.char_name}</h2>
-        <p className="mt-0.5 text-sm text-dim">
-          Age {game.age} · Arc {game.arc} — {game.arc_name}
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span
             className={`rounded-full border px-3 py-1 font-mono text-[11px] tracking-wider ${
               MENTAL_TONE[game.mental_state] ?? "border-void-700 text-dim"
@@ -124,6 +152,16 @@ export default function CharacterSheet({ game, npcs }: { game: Game; npcs: Npc[]
         <br />
         {game.looks_tier} · turn {game.turn_no}
       </p>
+
+      {shopOpen && (
+        <Shop
+          game={game}
+          onClose={() => setShopOpen(false)}
+          onBought={async () => {
+            await onRefresh?.();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -37,6 +37,9 @@ export async function applyDelta(game: Game, delta: TurnDelta): Promise<Game> {
   // karma (hidden delta, uncapped)
   if (typeof delta.karma === "number") patch.karma = game.karma + delta.karma;
 
+  // money (SGD delta; may go negative — debt is thematic)
+  if (typeof delta.money === "number") patch.money = game.money + delta.money;
+
   // mental state (absolute); arm On Fire counter
   if (delta.mental_state && delta.mental_state !== game.mental_state) {
     patch.mental_state = delta.mental_state;

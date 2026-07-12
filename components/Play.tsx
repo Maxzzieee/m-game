@@ -253,7 +253,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           </button>
         )}
         <div className="rounded-2xl border border-void-700 bg-void-800/50 p-6 shadow-card lg:sticky lg:top-5">
-          <CharacterSheet game={game} npcs={npcs} />
+          <CharacterSheet game={game} npcs={npcs} onRefresh={refreshState} />
         </div>
       </aside>
     </main>

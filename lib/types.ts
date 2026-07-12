@@ -35,6 +35,9 @@ export interface Game {
   rep_family: number;
   rep_system: number;
 
+  money: number;
+  items: string[];
+
   mental_state: MentalState;
   on_fire_checks: number;
   karma: number;
@@ -120,6 +123,7 @@ export interface TurnDelta {
     system: number;
   }>;
   karma?: number;
+  money?: number; // SGD delta: allowance, angbao, part-time pay, fines, treats
   mental_state?: MentalState;
   npc_changes?: Array<{
     name: string;

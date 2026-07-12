@@ -76,6 +76,11 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
         },
       },
       karma: { type: "integer", description: "Hidden karma delta." },
+      money: {
+        type: "integer",
+        description:
+          "SGD delta to the player's pocket money — allowance, angbao, part-time pay, fines, spending on treats. Keep amounts age-appropriate and grounded.",
+      },
       mental_state: {
         type: "string",
         enum: ["Fresh", "Tired", "Stress", "Burnt Out", "On Fire"],
