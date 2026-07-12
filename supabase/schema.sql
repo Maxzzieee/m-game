@@ -146,7 +146,26 @@ create table if not exists arc_journal (
 create index if not exists arc_journal_game_idx on arc_journal(game_id);
 
 -- ----------------------------------------------------------------------------
--- keep updated_at fresh on games
+-- pursuits: the Dreams engine. A declared life dream tracked on a 0-6 milestone
+-- ladder (SPARK .. THE SUMMIT). One active pursuit at a time (soft rule).
+-- ----------------------------------------------------------------------------
+create table if not exists pursuits (
+  id                uuid primary key default gen_random_uuid(),
+  game_id           uuid not null references games(id) on delete cascade,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+
+  dream             text not null,
+  stage             int  not null default 0,          -- 0 SPARK .. 6 THE SUMMIT
+  status            text not null default 'active',   -- active | achieved | transformed | abandoned
+  next_milestone    text,
+  note              text,
+  meta              jsonb not null default '{}'::jsonb
+);
+create index if not exists pursuits_game_idx on pursuits(game_id);
+
+-- ----------------------------------------------------------------------------
+-- keep updated_at fresh
 -- ----------------------------------------------------------------------------
 create or replace function touch_updated_at() returns trigger as $$
 begin
@@ -157,4 +176,8 @@ $$ language plpgsql;
 
 drop trigger if exists games_touch on games;
 create trigger games_touch before update on games
+  for each row execute function touch_updated_at();
+
+drop trigger if exists pursuits_touch on pursuits;
+create trigger pursuits_touch before update on pursuits
   for each row execute function touch_updated_at();

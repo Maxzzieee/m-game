@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (guard) return guard;
 
   const body = await req.json().catch(() => ({}));
-  const mode = body.mode as "start" | "action" | "resolve";
+  const mode = body.mode as "start" | "action" | "resolve" | "nudge";
   const big = !!body.big;
 
   const game = await latestGame();
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
     const action = typeof body.action === "string" ? body.action : "";
     if (!action.trim()) return Response.json({ error: "empty action" }, { status: 400 });
     modeArg = { kind: "action" as const, action };
+  } else if (mode === "nudge") {
+    modeArg = { kind: "nudge" as const };
   } else {
     modeArg = { kind: "start" as const };
   }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Gate from "./Gate";
 import Creation from "./Creation";
 import Play from "./Play";
-import type { Game as GameT, GameEvent, Npc } from "@/lib/types";
+import type { ChoiceOption, Game as GameT, GameEvent, Npc, Pursuit } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 
 export interface Snapshot {
@@ -13,6 +13,9 @@ export interface Snapshot {
   transcript: GameEvent[];
   awaiting_roll: AwaitingRoll | null;
   pending_stat_boost?: boolean;
+  choices?: ChoiceOption[] | null;
+  scene_hook?: string | null;
+  pursuit?: Pursuit | null;
 }
 
 type Phase = "loading" | "gate" | "creation" | "play";

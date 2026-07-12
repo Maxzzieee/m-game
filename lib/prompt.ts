@@ -1,7 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
-import { ArcJournal, DiceResult, Game, GameEvent, Npc, Seed } from "./types";
+import { sgCalendar } from "./calendar";
+import { ArcJournal, DiceResult, Game, GameEvent, Npc, Pursuit, Seed } from "./types";
+
+export const PURSUIT_STAGES = [
+  "SPARK",
+  "FIRST PROOF",
+  "GATEKEEPER CLASH",
+  "THE GRIND",
+  "THE THRESHOLD",
+  "THE LIFE",
+  "THE SUMMIT",
+] as const;
 
 // The frozen SSOT is the cached prefix. Read once, kept in module memory.
 let _ssot: string | null = null;
@@ -34,6 +45,8 @@ export function buildStateBlock(
   karmaCashIn: "good" | "bad" | null,
   worldNotes: string[] = [],
   pastCanon: string[] = [],
+  pursuit: Pursuit | null = null,
+  sceneHook: string | null = null,
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -46,6 +59,16 @@ export function buildStateBlock(
   lines.push(`Mental state: ${game.mental_state}`);
   lines.push(`Pocket money: $${game.money}${game.money < 0 ? " (IN DEBT)" : ""}`);
   lines.push(`Confirm Plus Chop: ${game.confirm_chop ? "AVAILABLE this arc" : "used"}`);
+  lines.push(`CALENDAR: ${sgCalendar(game.ingame_date, game.age).line}`);
+
+  if (pursuit) {
+    const stageName = PURSUIT_STAGES[Math.min(6, Math.max(0, pursuit.stage))];
+    lines.push(
+      `DREAM: ${pursuit.dream} — stage ${pursuit.stage}/6 ${stageName}` +
+        (pursuit.next_milestone ? `; next milestone: ${pursuit.next_milestone}` : "") +
+        (pursuit.note ? `; latest: ${pursuit.note}` : ""),
+    );
+  }
 
   if (npcs.length) {
     lines.push("");
@@ -80,6 +103,11 @@ export function buildStateBlock(
     lines.push("");
     lines.push("OFFSCREEN, since the last session (weave in as lived reality, never a bulletin):");
     for (const n of worldNotes) lines.push(`- ${n}`);
+  }
+
+  if (sceneHook) {
+    lines.push("");
+    lines.push(`SCENE HOOK (the world comes to the player — open with this intrusion): ${sceneHook}`);
   }
 
   if (karmaCashIn) {
@@ -137,13 +165,21 @@ export function buildUserMessage(opts: {
   recentBlock: string;
   playerAction: string; // "" for the very first scene
   diceResult?: DiceResult | null;
+  nudge?: boolean; // NPC-initiated scene: the world moves first
 }): string {
   const parts = [opts.stateBlock];
   if (opts.memoriesBlock) parts.push(opts.memoriesBlock);
   if (opts.recentBlock) parts.push(opts.recentBlock);
 
   parts.push("=== THIS TURN ===");
-  if (opts.diceResult) {
+  if (opts.nudge) {
+    parts.push(
+      "The player is present but hasn't acted — the world moves first. Open the scene with " +
+        "the SCENE HOOK intrusion from GAME STATE (or, if none, a small believable " +
+        "NPC-initiated moment). Land the intrusion, let it breathe, then hand control back " +
+        "to the player with choices.",
+    );
+  } else if (opts.diceResult) {
     parts.push(
       `The player rolled. Result: ${diceLine(opts.diceResult)}. Narrate the consequence, ` +
         `honouring Nat 1 / Nat 20 (something EXTRA), then offer the next choices.`,

@@ -10,6 +10,7 @@ import {
 import {
   deriveSearchTags,
   getActiveNpcs,
+  getActivePursuit,
   getArcJournal,
   getPastCanon,
   getPendingSeeds,
@@ -19,7 +20,7 @@ import {
 import { applyDelta, consumeOnFire } from "./state";
 import { rollCheck } from "./dice";
 import { db } from "./supabase";
-import { DiceResult, Game } from "./types";
+import { ChoiceOption, DiceResult, Game } from "./types";
 
 export interface AwaitingRoll {
   stat: string;
@@ -34,6 +35,8 @@ interface GameMeta {
   last_roll?: DiceResult | null;
   world_notes?: string[] | null;
   pending_stat_boost?: boolean;
+  choices?: ChoiceOption[] | null;
+  scene_hook?: string | null;
 }
 
 export function getMeta(game: Game): GameMeta {
@@ -97,7 +100,8 @@ export async function resolvePendingRoll(game: Game): Promise<DiceResult | null>
 type Mode =
   | { kind: "start" }
   | { kind: "action"; action: string }
-  | { kind: "resolve"; dice: DiceResult };
+  | { kind: "resolve"; dice: DiceResult }
+  | { kind: "nudge" }; // NPC-initiated scene: the world moves first
 
 // Orchestrate one story turn: assemble DB-owned context, run the DM (streaming
 // prose via onText), persist the event + apply the structured delta, and fold
@@ -123,12 +127,15 @@ export async function runStoryTurn(
     getPendingSeeds(game.id),
     getRecentEvents(game.id),
   ]);
-  const [journal, pastCanon] = await Promise.all([
+  const [journal, pastCanon, pursuit] = await Promise.all([
     getArcJournal(game.id, game.arc),
     getPastCanon(game.id, game.arc),
+    getActivePursuit(game.id),
   ]);
   const karmaCashIn = await maybeKarmaCashIn(game);
-  const worldNotes = getMeta(game).world_notes ?? [];
+  const meta = getMeta(game);
+  const worldNotes = meta.world_notes ?? [];
+  const sceneHook = mode.kind === "nudge" ? (meta.scene_hook ?? null) : null;
 
   // Reputation-echo retrieval: what old scenes are relevant right now?
   const searchSeed =
@@ -144,6 +151,8 @@ export async function runStoryTurn(
     karmaCashIn,
     worldNotes,
     pastCanon,
+    pursuit,
+    sceneHook,
   );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
@@ -154,6 +163,7 @@ export async function runStoryTurn(
     recentBlock,
     playerAction: mode.kind === "action" ? mode.action : "",
     diceResult: mode.kind === "resolve" ? mode.dice : null,
+    nudge: mode.kind === "nudge",
   });
 
   // Karma cash-ins are pivotal scenes — route them to the big model.
@@ -173,11 +183,14 @@ export async function runStoryTurn(
   const closingArc = game.arc;
   const updated = await applyDelta(game, delta);
 
-  // Stash any awaiting-roll; clear the consumed roll and consumed world notes.
+  // Stash awaiting-roll + structured choices; clear consumed roll, world notes,
+  // and (on nudge) the scene hook.
   await setMeta(updated.id, {
     awaiting_roll: delta.awaiting_roll ?? null,
+    choices: delta.awaiting_roll ? null : (delta.choices ?? null),
     last_roll: null,
     world_notes: null,
+    ...(mode.kind === "nudge" ? { scene_hook: null } : {}),
     // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
     ...(delta.advance ? { pending_stat_boost: true } : {}),
   });

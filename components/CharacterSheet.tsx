@@ -3,7 +3,17 @@
 import { useState } from "react";
 import PixelAvatar from "./PixelAvatar";
 import Shop from "./Shop";
-import type { Game, Npc } from "@/lib/types";
+import type { Game, Npc, Pursuit } from "@/lib/types";
+
+const PURSUIT_STAGE_NAMES = [
+  "Spark",
+  "First proof",
+  "Gatekeeper clash",
+  "The grind",
+  "The threshold",
+  "The life",
+  "THE SUMMIT",
+];
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
@@ -72,10 +82,12 @@ const MENTAL_TONE: Record<string, string> = {
 export default function CharacterSheet({
   game,
   npcs,
+  pursuit,
   onRefresh,
 }: {
   game: Game;
   npcs: Npc[];
+  pursuit?: Pursuit | null;
   onRefresh?: () => Promise<void>;
 }) {
   const [shopOpen, setShopOpen] = useState(false);
@@ -125,6 +137,31 @@ export default function CharacterSheet({
         <Stat label="Brawn" n={game.brawn} />
         <Stat label="Guts" n={game.guts} />
       </div>
+
+      {pursuit && (
+        <div className="rounded-xl border border-neon/40 bg-neon/5 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">The dream</p>
+          <p className="mt-1 font-serif text-lg font-medium leading-tight">{pursuit.dream}</p>
+          <div className="mt-2.5 flex items-center gap-1.5" aria-hidden>
+            {Array.from({ length: 7 }, (_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${
+                  i <= pursuit.stage ? (i === 6 ? "bg-chili" : "bg-neon") : "bg-void-700"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-neon">
+            Stage {pursuit.stage}: {PURSUIT_STAGE_NAMES[Math.min(6, Math.max(0, pursuit.stage))]}
+          </p>
+          {pursuit.next_milestone && (
+            <p className="mt-1.5 text-xs italic leading-snug text-dim">
+              Next: {pursuit.next_milestone}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2.5">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Reputation</p>

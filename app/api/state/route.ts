@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/session";
 import { latestGame } from "@/lib/game";
-import { getActiveNpcs, getRecentEvents } from "@/lib/memory";
+import { getActiveNpcs, getActivePursuit, getRecentEvents } from "@/lib/memory";
 import { getMeta } from "@/lib/turn";
 
 export const runtime = "nodejs";
@@ -14,9 +14,10 @@ export async function GET() {
   const game = await latestGame();
   if (!game) return Response.json({ game: null });
 
-  const [npcs, recent] = await Promise.all([
+  const [npcs, recent, pursuit] = await Promise.all([
     getActiveNpcs(game.id),
     getRecentEvents(game.id, 40),
+    getActivePursuit(game.id),
   ]);
   const meta = getMeta(game);
 
@@ -26,5 +27,8 @@ export async function GET() {
     transcript: recent,
     awaiting_roll: meta.awaiting_roll ?? null,
     pending_stat_boost: meta.pending_stat_boost ?? false,
+    choices: meta.choices ?? null,
+    scene_hook: meta.scene_hook ?? null,
+    pursuit,
   });
 }

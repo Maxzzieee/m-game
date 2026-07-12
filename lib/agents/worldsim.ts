@@ -41,6 +41,11 @@ const WORLDSIM_TOOL: Anthropic.Tool = {
         type: ["string", "null"],
         description: "Optionally plant ONE butterfly seed from the offscreen world.",
       },
+      hook: {
+        type: ["string", "null"],
+        description:
+          "Optionally, ONE scene intrusion where the world comes to the player: an NPC at the door, an urgent text, a summons. One vivid line, present tense ('Farhan hammering on the door at 9pm, eyes red'). Use sparingly — only when a development genuinely demands the player's attention NOW.",
+      },
     },
     required: ["developments"],
   },
@@ -95,6 +100,7 @@ export async function maybeRunWorldSim(game: Game): Promise<boolean> {
     developments?: string[];
     npc_meter_shifts?: Array<{ name: string; delta: number }>;
     new_seed?: string | null;
+    hook?: string | null;
   };
 
   // Apply silent meter shifts.
@@ -115,14 +121,21 @@ export async function maybeRunWorldSim(game: Game): Promise<boolean> {
     });
   }
 
-  // Leave the notes for the DM to weave into the next scene.
+  // Leave the notes (and any scene intrusion) for the DM's next scene.
   const notes = (out.developments ?? []).filter((d) => typeof d === "string" && d.trim());
-  if (notes.length) {
+  const hook = typeof out.hook === "string" && out.hook.trim() ? out.hook.trim() : null;
+  if (notes.length || hook) {
     await db()
       .from("games")
-      .update({ meta: { ...meta, world_notes: notes } })
+      .update({
+        meta: {
+          ...meta,
+          ...(notes.length ? { world_notes: notes } : {}),
+          ...(hook ? { scene_hook: hook } : {}),
+        },
+      })
       .eq("id", game.id);
   }
 
-  return notes.length > 0;
+  return notes.length > 0 || hook !== null;
 }

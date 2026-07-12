@@ -113,11 +113,44 @@ export interface ArcJournal {
   updated_at: string;
 }
 
+export interface Pursuit {
+  id: string;
+  game_id: string;
+  created_at: string;
+  updated_at: string;
+  dream: string;
+  stage: number; // 0 SPARK .. 6 THE SUMMIT
+  status: "active" | "achieved" | "transformed" | "abandoned";
+  next_milestone: string | null;
+  note: string | null;
+  meta: Record<string, unknown>;
+}
+
+export interface ChoiceOption {
+  key: string; // "A".."D"
+  label: string;
+}
+
 // The structured delta the DM emits via the `record_turn` tool.
 export interface TurnDelta {
   summary: string;
   tags?: string[];
-  awaiting_roll?: { stat: string; dc: number; reason: string } | null;
+  choices?: ChoiceOption[];
+  ingame_date?: string; // absolute "YYYY-MM", monotonic
+  awaiting_roll?: {
+    stat: string;
+    dc: number;
+    reason: string;
+    mode?: "normal" | "advantage" | "disadvantage";
+    mode_reason?: string;
+  } | null;
+  pursuit?: {
+    declare?: string; // new dream text
+    stage?: number; // absolute 0..6
+    status?: "active" | "achieved" | "transformed" | "abandoned";
+    next_milestone?: string;
+    note?: string;
+  } | null;
   stats?: Partial<Record<StatKey, number>>;
   reputation?: Partial<{
     academic: number;

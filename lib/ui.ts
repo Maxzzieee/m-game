@@ -24,14 +24,16 @@ const AMBIANCE: Array<{ match: string[]; color: string }> = [
   { match: ["family", "home", "cny"], color: "rgba(220, 150, 46, 0.14)" },
 ];
 
-export function ambianceFor(tags: string[] | undefined, game: Game): string {
+// Tag-derived scene tint; null when no tag matches (so the calendar layer can
+// take over). Mental-state extremes still override the calendar.
+export function ambianceFor(tags: string[] | undefined, game: Game): string | null {
+  if (game.mental_state === "Burnt Out") return "rgba(191, 64, 40, 0.07)";
+  if (game.mental_state === "On Fire") return "rgba(220, 150, 46, 0.16)";
   const lower = (tags ?? []).map((t) => t.toLowerCase());
   for (const a of AMBIANCE) {
     if (a.match.some((m) => lower.some((t) => t.includes(m)))) return a.color;
   }
-  if (game.mental_state === "Burnt Out") return "rgba(191, 64, 40, 0.07)";
-  if (game.mental_state === "On Fire") return "rgba(220, 150, 46, 0.16)";
-  return "rgba(220, 150, 46, 0.08)";
+  return null;
 }
 
 // ---- choice parsing ----------------------------------------------------------

@@ -5,7 +5,8 @@ import CharacterSheet from "./CharacterSheet";
 import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
 import { IconClose, IconSend, IconSheet, IconSpark } from "./Icons";
 import { ambianceFor, diffGame, parseChoices, type Choice, type DeltaToast } from "@/lib/ui";
-import type { DiceResult, Game, GameEvent, Npc } from "@/lib/types";
+import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
+import type { DiceResult, Game, GameEvent, Npc, Pursuit } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 import type { Snapshot } from "./Game";
 
@@ -115,6 +116,11 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
 
   const [live, setLive] = useState<{ player?: string; dice?: DiceResult; dm?: string }>({});
   const [pendingBoost, setPendingBoost] = useState(!!initial.pending_stat_boost);
+  const [structuredChoices, setStructuredChoices] = useState<Choice[] | null>(
+    initial.choices ?? null,
+  );
+  const [sceneHook, setSceneHook] = useState<string | null>(initial.scene_hook ?? null);
+  const [pursuit, setPursuit] = useState<Pursuit | null>(initial.pursuit ?? null);
   const [streaming, setStreaming] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [overlay, setOverlay] = useState<{ open: boolean; dice: DiceResult | null }>({
@@ -148,6 +154,9 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setEvents(data.transcript ?? []);
     setAwaiting(data.awaiting_roll ?? null);
     setPendingBoost(!!data.pending_stat_boost);
+    setStructuredChoices(data.choices ?? null);
+    setSceneHook(data.scene_hook ?? null);
+    setPursuit(data.pursuit ?? null);
   }, []);
 
   const streamTurn = useCallback(
@@ -228,12 +237,21 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
 
   const busy = streaming || rolling;
 
-  // Choices from the latest DM prose (only when the story is waiting on us).
+  // Structured choices from the DM's tool call; regex fallback for old saves.
   const lastDm = [...events].reverse().find((e) => e.role === "dm");
-  const choices: Choice[] = !busy && !awaiting && lastDm ? parseChoices(lastDm.prose) : [];
+  const choices: Choice[] =
+    busy || awaiting
+      ? []
+      : structuredChoices?.length
+        ? structuredChoices
+        : lastDm
+          ? parseChoices(lastDm.prose)
+          : [];
 
-  // Scene ambiance from the latest DM event's tags.
-  const ambiance = ambianceFor(lastDm?.tags, game);
+  // Scene ambiance: tags first, then the calendar's season/festival tint.
+  const ambiance =
+    ambianceFor(lastDm?.tags, game) ?? calendarAmbiance(game.ingame_date) ?? "rgba(220, 150, 46, 0.08)";
+  const cal = sgCalendar(game.ingame_date, game.age);
 
   return (
     <main className="relative mx-auto flex min-h-screen max-w-6xl gap-8 px-4 py-5 lg:px-8">
@@ -267,7 +285,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         <header className="mb-5 flex items-center justify-between border-b border-void-700/70 pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
-              Arc {game.arc} · {game.arc_name}
+              Arc {game.arc} · {game.arc_name} · {cal.shortLabel}
             </p>
             <h1 className="mt-0.5 font-serif text-xl font-medium">{game.char_name}</h1>
           </div>
@@ -314,6 +332,30 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
 
         {/* Action bar */}
         <div className="mt-5 border-t border-void-700/70 pt-4">
+          {/* NPC-initiated scene: the world knocks */}
+          {sceneHook && !busy && !awaiting && (
+            <button
+              onClick={async () => {
+                setSceneHook(null);
+                await streamTurn({ mode: "nudge" });
+              }}
+              className="animate-pulseglow mb-3 flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-neon/50 bg-void-800 px-4 py-3 text-left shadow-card transition-colors duration-200 hover:bg-void-800/70"
+            >
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-neon opacity-60" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-neon" />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
+                  Something&apos;s happening
+                </span>
+                <span className="block truncate text-sm text-parchment/90">{sceneHook}</span>
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[11px] uppercase tracking-wider text-neon">
+                See →
+              </span>
+            </button>
+          )}
           {awaiting ? (
             <div className="space-y-3">
               <RollPrompt awaiting={awaiting} rolling={rolling} onRoll={roll} />
@@ -350,15 +392,17 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           ) : (
             <div>
               {choices.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
+                <div className="mb-3 grid gap-2">
                   {choices.map((c) => (
                     <button
                       key={c.key}
-                      onClick={() => void send(`${c.key}) ${c.label}`)}
-                      className="group flex max-w-full cursor-pointer items-baseline gap-2 rounded-xl border border-void-700 bg-void-800/80 px-3.5 py-2 text-left shadow-card transition-colors duration-200 hover:border-neon/50"
+                      onClick={() => void send(c.label)}
+                      className="group flex w-full cursor-pointer items-start gap-3 rounded-xl border border-void-700 bg-void-800/80 px-4 py-3 text-left shadow-card transition-all duration-200 hover:border-neon/60 hover:bg-void-800"
                     >
-                      <span className="font-mono text-xs font-medium text-neon">{c.key}</span>
-                      <span className="truncate font-serif text-sm text-parchment/85 group-hover:text-parchment">
+                      <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-neon/40 font-mono text-xs font-medium text-neon transition-colors duration-200 group-hover:bg-neon group-hover:text-ink">
+                        {c.key}
+                      </span>
+                      <span className="text-[15px] leading-snug text-parchment/90 group-hover:text-parchment">
                         {c.label}
                       </span>
                     </button>
@@ -417,7 +461,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           </button>
         )}
         <div className="rounded-2xl border border-void-700 bg-void-800/50 p-6 shadow-card lg:sticky lg:top-5">
-          <CharacterSheet game={game} npcs={npcs} onRefresh={refreshState} />
+          <CharacterSheet game={game} npcs={npcs} pursuit={pursuit} onRefresh={refreshState} />
         </div>
       </aside>
     </main>

@@ -1,5 +1,5 @@
 import { db } from "./supabase";
-import { ArcJournal, GameEvent, Npc, Seed } from "./types";
+import { ArcJournal, GameEvent, Npc, Pursuit, Seed } from "./types";
 
 // How many of the most recent events stay verbatim in the prompt. Older ones get
 // folded into the arc journal by the summariser. This keeps per-turn prompt size
@@ -26,6 +26,16 @@ export async function getActiveNpcs(gameId: string): Promise<Npc[]> {
     .order("created_at", { ascending: true });
   if (error) throw new Error(`getActiveNpcs: ${error.message}`);
   return (data as Npc[]) ?? [];
+}
+
+export async function getActivePursuit(gameId: string): Promise<Pursuit | null> {
+  const { data } = await db()
+    .from("pursuits")
+    .select("*")
+    .eq("game_id", gameId)
+    .eq("status", "active")
+    .maybeSingle();
+  return (data as Pursuit) ?? null;
 }
 
 export async function getPendingSeeds(gameId: string): Promise<Seed[]> {

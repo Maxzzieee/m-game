@@ -45,6 +45,27 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
         description:
           "Entities/themes present: NPC names, location, and theme tags (fight, crush, exam, viral, family, money, ns, cca). Retrieval keys — always tag NPCs by name.",
       },
+      choices: {
+        type: "array",
+        description:
+          "2-4 options for the player when the scene is open-ended. The app renders these as buttons — do NOT also print an A/B/C/D menu in your prose; end the prose on the dramatic beat instead. Omit when awaiting a roll or when the scene needs a free-text answer.",
+        items: {
+          type: "object",
+          properties: {
+            key: { type: "string", description: "A, B, C or D" },
+            label: {
+              type: "string",
+              description: "The option, one punchy line (max ~90 chars), player-voice.",
+            },
+          },
+          required: ["key", "label"],
+        },
+      },
+      ingame_date: {
+        type: "string",
+        description:
+          "Advance in-game time as scenes move: absolute 'YYYY-MM', never earlier than the current date. Small scenes may share a month; montages and holidays jump months.",
+      },
       awaiting_roll: {
         type: ["object", "null"],
         description:
@@ -120,6 +141,24 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
       new_seed: {
         type: ["string", "null"],
         description: "Plant a butterfly seed (a decision that will pay off later).",
+      },
+      pursuit: {
+        type: ["object", "null"],
+        description:
+          "The player's declared life dream (see DREAMS ENGINE in the system prompt). Use `declare` when they commit to a new dream; move `stage` (absolute 0-6) only when a milestone is genuinely earned; `status` for transform/abandon/achieve.",
+        properties: {
+          declare: { type: "string", description: "New dream, short: 'professional footballer'." },
+          stage: { type: "integer", description: "Absolute ladder stage 0-6." },
+          status: {
+            type: "string",
+            enum: ["active", "achieved", "transformed", "abandoned"],
+          },
+          next_milestone: {
+            type: "string",
+            description: "What reaching the NEXT stage concretely looks like.",
+          },
+          note: { type: "string", description: "Latest development in the pursuit, one line." },
+        },
       },
       confirm_chop_used: {
         type: "boolean",

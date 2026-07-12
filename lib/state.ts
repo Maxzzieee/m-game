@@ -40,6 +40,11 @@ export async function applyDelta(game: Game, delta: TurnDelta): Promise<Game> {
   // money (SGD delta; may go negative — debt is thematic)
   if (typeof delta.money === "number") patch.money = game.money + delta.money;
 
+  // in-game time (absolute YYYY-MM, monotonic — never travel backwards)
+  if (typeof delta.ingame_date === "string" && /^\d{4}-\d{2}$/.test(delta.ingame_date)) {
+    if (delta.ingame_date >= game.ingame_date) patch.ingame_date = delta.ingame_date;
+  }
+
   // mental state (absolute); arm On Fire counter
   if (delta.mental_state && delta.mental_state !== game.mental_state) {
     patch.mental_state = delta.mental_state;
@@ -92,6 +97,44 @@ export async function applyDelta(game: Game, delta: TurnDelta): Promise<Game> {
           first_arc: game.arc,
         });
       }
+    }
+  }
+
+  // pursuit (the Dreams engine): declare creates/replaces the active pursuit;
+  // stage/status/milestone updates mutate it.
+  if (delta.pursuit) {
+    const p = delta.pursuit;
+    const { data: active } = await db()
+      .from("pursuits")
+      .select("*")
+      .eq("game_id", game.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (p.declare) {
+      // A new dream supersedes the old active one (it becomes abandoned unless
+      // the DM explicitly marked it transformed this same turn).
+      if (active) {
+        await db()
+          .from("pursuits")
+          .update({ status: p.status === "transformed" ? "transformed" : "abandoned" })
+          .eq("id", active.id);
+      }
+      await db().from("pursuits").insert({
+        game_id: game.id,
+        dream: p.declare,
+        stage: clamp(p.stage ?? 0, 0, 6),
+        status: "active",
+        next_milestone: p.next_milestone ?? null,
+        note: p.note ?? null,
+      });
+    } else if (active) {
+      const upd: Record<string, unknown> = {};
+      if (typeof p.stage === "number") upd.stage = clamp(p.stage, 0, 6);
+      if (p.status) upd.status = p.status;
+      if (p.next_milestone) upd.next_milestone = p.next_milestone;
+      if (p.note) upd.note = p.note;
+      if (Object.keys(upd).length) await db().from("pursuits").update(upd).eq("id", active.id);
     }
   }
 
