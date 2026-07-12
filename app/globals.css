@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-void-900 text-parchment antialiased;
+  /* distant sodium-lamp warmth top-right, void-deck green low-left */
+  background-image:
+    radial-gradient(1100px 520px at 85% -8%, rgba(240, 166, 62, 0.07), transparent 70%),
+    radial-gradient(900px 480px at -5% 108%, rgba(87, 179, 137, 0.05), transparent 70%);
+  background-attachment: fixed;
+}
+
+/* faint film grain so flat panels don't feel dead */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 1;
+}
+body > * {
+  position: relative;
+  z-index: 2;
+}
+
+::selection {
+  background: rgba(240, 166, 62, 0.25);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-void-700;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid rgba(240, 166, 62, 0.7);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------- narration typography ---------- */
+.prose-narration {
+  @apply max-w-prose font-serif text-[1.075rem] leading-[1.75] text-parchment/95;
+}
+.prose-narration p {
+  @apply mb-5;
+}
+.prose-narration p:first-child::first-letter {
+  @apply float-left mr-2 mt-1 font-serif text-[2.6rem] leading-[0.85] text-neon;
+}
+.prose-narration strong {
+  @apply font-semibold text-neon;
+}
+.prose-narration em {
+  @apply italic text-parchment;
+}
+
+/* ---------- animations ---------- */
+@keyframes fadeup {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fadeup {
+  animation: fadeup 0.4s ease-out both;
+}
+
+@keyframes rollshake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-14deg); }
+  40% { transform: rotate(12deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(6deg); }
+}
+.animate-roll {
+  animation: rollshake 0.55s ease-in-out infinite;
+}
+
+@keyframes pulseglow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 166, 62, 0); }
+  50% { box-shadow: 0 0 26px -4px rgba(240, 166, 62, 0.45); }
+}
+.animate-pulseglow {
+  animation: pulseglow 2.2s ease-in-out infinite;
+}
+
+.blink::after {
+  content: "▌";
+  @apply text-neon;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeup,
+  .animate-roll,
+  .animate-pulseglow {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

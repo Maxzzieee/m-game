@@ -1,0 +1,60 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Gate from "./Gate";
+import Creation from "./Creation";
+import Play from "./Play";
+import type { Game as GameT, GameEvent, Npc } from "@/lib/types";
+import type { AwaitingRoll } from "@/lib/turn";
+
+export interface Snapshot {
+  game: GameT | null;
+  npcs: Npc[];
+  transcript: GameEvent[];
+  awaiting_roll: AwaitingRoll | null;
+}
+
+type Phase = "loading" | "gate" | "creation" | "play";
+
+export default function Game() {
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [snap, setSnap] = useState<Snapshot | null>(null);
+
+  const loadState = useCallback(async () => {
+    const res = await fetch("/api/state");
+    if (res.status === 401) {
+      setPhase("gate");
+      return;
+    }
+    const data = (await res.json()) as Snapshot;
+    setSnap(data);
+    setPhase(data.game ? "play" : "creation");
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const g = await fetch("/api/gate").then((r) => r.json());
+      if (!g.authed) {
+        setPhase("gate");
+        return;
+      }
+      await loadState();
+    })();
+  }, [loadState]);
+
+  if (phase === "loading") {
+    return (
+      <main className="grid min-h-screen place-items-center">
+        <div className="animate-pulse font-mono text-xs uppercase tracking-[0.35em] text-dim">
+          Loading
+        </div>
+      </main>
+    );
+  }
+
+  if (phase === "gate") return <Gate onAuthed={loadState} />;
+  if (phase === "creation") return <Creation onCreated={loadState} />;
+  if (phase === "play" && snap?.game) return <Play initial={snap} reload={loadState} />;
+
+  return null;
+}

@@ -1,0 +1,80 @@
+import { anthropic, MODELS } from "../anthropic";
+import { db } from "../supabase";
+import { KEEP_VERBATIM } from "../memory";
+import { ArcJournal, Game, GameEvent } from "../types";
+
+// Fold older verbatim events into the arc journal so the prompt stays bounded.
+// Runs only when there are events past the verbatim window that haven't been
+// folded yet. Cheap Haiku pass.
+export async function maybeSummarize(game: Game): Promise<void> {
+  const cutoff = game.turn_no - KEEP_VERBATIM;
+  if (cutoff <= 0) return;
+
+  const { data: rows } = await db()
+    .from("events")
+    .select("*")
+    .eq("game_id", game.id)
+    .eq("arc", game.arc)
+    .eq("summarized", false)
+    .lte("turn_no", cutoff)
+    .order("turn_no", { ascending: true });
+
+  const events = (rows as GameEvent[]) ?? [];
+  if (events.length === 0) return;
+
+  const { data: jrow } = await db()
+    .from("arc_journal")
+    .select("*")
+    .eq("game_id", game.id)
+    .eq("arc", game.arc)
+    .maybeSingle();
+  const journal = jrow as ArcJournal | null;
+
+  const transcript = events
+    .map((e) => {
+      const who = e.role === "player" ? "PLAYER" : "DM";
+      const dice = e.dice ? ` [rolled d20 ${e.dice.d20} → ${e.dice.outcome}]` : "";
+      return `${who}${dice}: ${e.summary ?? e.prose}`;
+    })
+    .join("\n");
+
+  const prompt = [
+    "You maintain a running journal for a Singapore life-sim RPG. Fold the NEW scenes",
+    "into the EXISTING journal, producing an updated journal that is concise but keeps",
+    "every load-bearing fact: names, relationships, decisions made, promises, grudges,",
+    "reputation-shifting events, and emotional turning points. Prefer 4-8 tight sentences.",
+    "Do not invent anything. Output ONLY the updated journal text.",
+    "",
+    `EXISTING JOURNAL (arc ${game.arc}):`,
+    journal?.body || "(empty)",
+    "",
+    "NEW SCENES:",
+    transcript,
+  ].join("\n");
+
+  const resp = await anthropic().messages.create({
+    model: MODELS.summarizer,
+    max_tokens: 900,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const body = resp.content.find((b) => b.type === "text")?.text?.trim() || journal?.body || "";
+  const lastTurn = events[events.length - 1].turn_no;
+
+  if (journal) {
+    await db()
+      .from("arc_journal")
+      .update({ body, last_turn_folded: lastTurn, updated_at: new Date().toISOString() })
+      .eq("id", journal.id);
+  } else {
+    await db().from("arc_journal").insert({
+      game_id: game.id,
+      arc: game.arc,
+      body,
+      last_turn_folded: lastTurn,
+    });
+  }
+
+  const ids = events.map((e) => e.id);
+  await db().from("events").update({ summarized: true }).in("id", ids);
+}
