@@ -7,18 +7,28 @@ import type { Game, Npc } from "@/lib/types";
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
+const STAT_BAR: Record<string, string> = {
+  Brains: "#6fb7dd",
+  Face: "#e08cb8",
+  Brawn: "#e07a4a",
+  Guts: "#f0a63e",
+};
+
 function Stat({ label, n }: { label: string; n: number }) {
   const pct = ((n + 1) / 6) * 100; // -1..5
+  const c = STAT_BAR[label] ?? "#f0a63e";
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-dim">{label}</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: c }}>
+          {label}
+        </span>
         <span className="font-mono text-sm text-parchment">{sign(n)}</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-void-700/70">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-neon/60 to-neon transition-all duration-500"
-          style={{ width: `${Math.max(5, pct)}%` }}
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${Math.max(5, pct)}%`, backgroundColor: c }}
         />
       </div>
     </div>

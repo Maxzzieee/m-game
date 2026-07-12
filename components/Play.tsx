@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import CharacterSheet from "./CharacterSheet";
-import { DiceChip, RollPrompt } from "./Dice";
+import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
 import { IconClose, IconSend, IconSheet, IconSpark } from "./Icons";
+import { ambianceFor, diffGame, parseChoices, type Choice, type DeltaToast } from "@/lib/ui";
 import type { DiceResult, Game, GameEvent, Npc } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 import type { Snapshot } from "./Game";
@@ -49,6 +50,13 @@ function PlayerBubble({ text }: { text: string }) {
   );
 }
 
+const TOAST_TONE: Record<DeltaToast["tone"], string> = {
+  up: "border-jade/60 text-jade",
+  down: "border-chili/60 text-chili",
+  money: "border-neon/60 text-neon",
+  state: "border-parchment/40 text-parchment",
+};
+
 export default function Play({ initial }: { initial: Snapshot; reload: () => void }) {
   const [game, setGame] = useState<Game>(initial.game!);
   const [npcs, setNpcs] = useState<Npc[]>(initial.npcs);
@@ -58,16 +66,33 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   const [live, setLive] = useState<{ player?: string; dice?: DiceResult; dm?: string }>({});
   const [streaming, setStreaming] = useState(false);
   const [rolling, setRolling] = useState(false);
+  const [overlay, setOverlay] = useState<{ open: boolean; dice: DiceResult | null }>({
+    open: false,
+    dice: null,
+  });
+  const [toasts, setToasts] = useState<DeltaToast[]>([]);
   const [input, setInput] = useState("");
   const [useBig, setUseBig] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshState = useCallback(async () => {
     const data = (await fetch("/api/state").then((r) => r.json())) as Snapshot;
-    if (data.game) setGame(data.game);
+    if (data.game) {
+      setGame((prev) => {
+        const fresh = data.game!;
+        const d = diffGame(prev, fresh);
+        if (d.length) {
+          setToasts(d);
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = setTimeout(() => setToasts([]), 5000);
+        }
+        return fresh;
+      });
+    }
     setNpcs(data.npcs ?? []);
     setEvents(data.transcript ?? []);
     setAwaiting(data.awaiting_roll ?? null);
@@ -119,36 +144,72 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [events, live, awaiting]);
 
-  async function send() {
-    const text = input.trim();
-    if (!text || streaming || rolling) return;
+  async function send(text?: string) {
+    const action = (text ?? input).trim();
+    if (!action || streaming || rolling) return;
     setInput("");
-    await streamTurn({ mode: "action", action: text }, text);
+    await streamTurn({ mode: "action", action }, action);
   }
 
   async function roll() {
     if (rolling || streaming) return;
     setRolling(true);
+    setOverlay({ open: true, dice: null });
     try {
       const { dice } = (await fetch("/api/roll", { method: "POST" }).then((r) => r.json())) as {
         dice: DiceResult;
       };
       setAwaiting(null);
+      // let the die churn a beat before settling
+      await sleep(650);
+      setOverlay({ open: true, dice });
+      await sleep(1500);
+      setOverlay({ open: false, dice: null });
       setLive((l) => ({ ...l, dice }));
-      await sleep(850);
       setRolling(false);
       await streamTurn({ mode: "resolve" });
     } catch {
+      setOverlay({ open: false, dice: null });
       setRolling(false);
     }
   }
 
   const busy = streaming || rolling;
 
+  // Choices from the latest DM prose (only when the story is waiting on us).
+  const lastDm = [...events].reverse().find((e) => e.role === "dm");
+  const choices: Choice[] = !busy && !awaiting && lastDm ? parseChoices(lastDm.prose) : [];
+
+  // Scene ambiance from the latest DM event's tags.
+  const ambiance = ambianceFor(lastDm?.tags, game);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl gap-8 px-4 py-5 lg:px-8">
+    <main className="relative mx-auto flex min-h-screen max-w-6xl gap-8 px-4 py-5 lg:px-8">
+      {/* scene ambiance wash */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 transition-[background] duration-[1500ms]"
+        style={{ background: `radial-gradient(900px 600px at 50% 0%, ${ambiance}, transparent 75%)` }}
+      />
+
+      {overlay.open && <RollOverlay dice={overlay.dice} />}
+
+      {/* consequence toasts */}
+      {toasts.length > 0 && (
+        <div className="fixed left-1/2 top-5 z-40 flex -translate-x-1/2 flex-wrap justify-center gap-2 px-4">
+          {toasts.map((t) => (
+            <span
+              key={t.id}
+              className={`animate-fadeup rounded-full border bg-void-800/95 px-3.5 py-1.5 font-mono text-xs shadow-card ${TOAST_TONE[t.tone]}`}
+            >
+              {t.text}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Story column */}
-      <section className="flex min-h-[calc(100vh-2.5rem)] max-w-3xl flex-1 flex-col">
+      <section className="relative flex min-h-[calc(100vh-2.5rem)] max-w-3xl flex-1 flex-col">
         <header className="mb-5 flex items-center justify-between border-b border-void-700/70 pb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
@@ -202,38 +263,56 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           {awaiting ? (
             <RollPrompt awaiting={awaiting} rolling={rolling} onRoll={roll} />
           ) : (
-            <div className="flex items-end gap-2.5">
-              <label htmlFor="action" className="sr-only">
-                What do you do?
-              </label>
-              <textarea
-                id="action"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void send();
-                  }
-                }}
-                rows={2}
-                disabled={busy}
-                placeholder={busy ? "…" : "What do you do?"}
-                className="max-h-44 flex-1 resize-none rounded-2xl border border-void-700 bg-void-800 px-4 py-3.5 text-[15px] leading-relaxed shadow-card outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/60 disabled:opacity-50"
-              />
-              <button
-                onClick={send}
-                disabled={busy || !input.trim()}
-                aria-label="Act"
-                className="flex h-[52px] cursor-pointer items-center gap-2 rounded-2xl bg-neon px-5 font-semibold text-ink transition-all duration-200 hover:brightness-110 disabled:cursor-default disabled:opacity-40"
-              >
-                <IconSend /> Act
-              </button>
+            <div>
+              {choices.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {choices.map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => void send(`${c.key}) ${c.label}`)}
+                      className="group flex max-w-full cursor-pointer items-baseline gap-2 rounded-xl border border-void-700 bg-void-800/80 px-3.5 py-2 text-left shadow-card transition-colors duration-200 hover:border-neon/50"
+                    >
+                      <span className="font-mono text-xs font-medium text-neon">{c.key}</span>
+                      <span className="truncate font-serif text-sm text-parchment/85 group-hover:text-parchment">
+                        {c.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-end gap-2.5">
+                <label htmlFor="action" className="sr-only">
+                  What do you do?
+                </label>
+                <textarea
+                  id="action"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void send();
+                    }
+                  }}
+                  rows={2}
+                  disabled={busy}
+                  placeholder={busy ? "…" : "Or write your own move…"}
+                  className="max-h-44 flex-1 resize-none rounded-2xl border border-void-700 bg-void-800 px-4 py-3.5 text-[15px] leading-relaxed shadow-card outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/60 disabled:opacity-50"
+                />
+                <button
+                  onClick={() => void send()}
+                  disabled={busy || !input.trim()}
+                  aria-label="Act"
+                  className="flex h-[52px] cursor-pointer items-center gap-2 rounded-2xl bg-neon px-5 font-semibold text-ink transition-all duration-200 hover:brightness-110 disabled:cursor-default disabled:opacity-40"
+                >
+                  <IconSend /> Act
+                </button>
+              </div>
+              <p className="mt-2 hidden font-mono text-[10px] text-faint sm:block">
+                ENTER to act · SHIFT+ENTER for a new line
+              </p>
             </div>
           )}
-          <p className="mt-2 hidden font-mono text-[10px] text-faint sm:block">
-            ENTER to act · SHIFT+ENTER for a new line
-          </p>
         </div>
       </section>
 

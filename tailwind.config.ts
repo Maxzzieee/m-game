@@ -23,6 +23,13 @@ const config: Config = {
         neon: "#f0a63e", // hawker amber
         chili: "#e5533d",
         jade: "#57b389",
+        // stat colour language — read the kind of moment at a glance
+        stat: {
+          brains: "#6fb7dd", // cool blue: thinking your way out
+          face: "#e08cb8", // pink: charm, wayang
+          brawn: "#e07a4a", // burnt orange: muscle
+          guts: "#f0a63e", // amber: nerve
+        },
       },
       maxWidth: {
         prose: "68ch",
