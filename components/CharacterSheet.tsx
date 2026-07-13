@@ -200,21 +200,32 @@ export default function CharacterSheet({
         {game.looks_tier} · turn {game.turn_no}
       </p>
 
-      <button
-        onClick={async () => {
-          if (
-            !window.confirm(
-              `Start a new life? This deletes the current save — everything ${game.char_name} lived through, gone. Cannot undo.`,
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={async () => {
+            if (
+              !window.confirm(
+                `Start a new life? This deletes the current save — everything ${game.char_name} lived through, gone. Cannot undo.`,
+              )
             )
-          )
-            return;
-          await fetch("/api/reset", { method: "POST" });
-          window.location.reload();
-        }}
-        className="w-full cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-faint transition-colors duration-200 hover:border-chili/50 hover:text-chili"
-      >
-        Start a new life
-      </button>
+              return;
+            await fetch("/api/reset", { method: "POST" });
+            window.location.reload();
+          }}
+          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-chili/50 hover:text-chili"
+        >
+          New life
+        </button>
+        <button
+          onClick={async () => {
+            await fetch("/api/logout", { method: "POST" });
+            window.location.reload();
+          }}
+          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-dim/60 hover:text-parchment/80"
+        >
+          Log out
+        </button>
+      </div>
 
       {shopOpen && (
         <Shop

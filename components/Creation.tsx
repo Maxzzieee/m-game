@@ -117,7 +117,16 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-12">
+    <main className="relative mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-12">
+      <button
+        onClick={async () => {
+          await fetch("/api/logout", { method: "POST" });
+          window.location.reload();
+        }}
+        className="absolute right-6 top-5 cursor-pointer font-mono text-[10px] uppercase tracking-[0.25em] text-faint transition-colors duration-200 hover:text-parchment/80"
+      >
+        Log out
+      </button>
       {/* progress */}
       <div className="mb-10 flex items-center justify-center gap-2" aria-hidden>
         {["name", "stereotype", "roll_ses", "roll_looks"].map((s, i) => {
