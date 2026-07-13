@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { createGame, STEREOTYPES } from "@/lib/game";
 import { d100 } from "@/lib/dice";
 import { Stereotype } from "@/lib/types";
@@ -6,8 +6,8 @@ import { Stereotype } from "@/lib/types";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
   const body = await req.json().catch(() => ({}));
   const name = typeof body.char_name === "string" ? body.char_name.trim() : "";
@@ -20,6 +20,6 @@ export async function POST(req: Request) {
   const ses_roll = d100();
   const looks_roll = d100();
 
-  const game = await createGame({ char_name: name, stereotype, ses_roll, looks_roll });
+  const game = await createGame({ profile: auth, char_name: name, stereotype, ses_roll, looks_roll });
   return Response.json({ game });
 }

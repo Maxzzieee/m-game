@@ -11,6 +11,7 @@ export interface Game {
   id: string;
   created_at: string;
   updated_at: string;
+  profile: string; // 'main' | 'p2' — which household player owns this save
 
   char_name: string;
   stereotype: Stereotype;

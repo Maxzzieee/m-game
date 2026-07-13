@@ -6,6 +6,7 @@ import { Game, Stereotype } from "./types";
 export { STEREOTYPES, looksTier, sesTier };
 
 export async function createGame(input: {
+  profile: string;
   char_name: string;
   stereotype: Stereotype;
   ses_roll: number;
@@ -15,6 +16,7 @@ export async function createGame(input: {
   const { data, error } = await db()
     .from("games")
     .insert({
+      profile: input.profile,
       char_name: input.char_name,
       stereotype: input.stereotype,
       ses_roll: input.ses_roll,
@@ -37,10 +39,11 @@ export async function getGame(id: string): Promise<Game | null> {
   return (data as Game) ?? null;
 }
 
-export async function latestGame(): Promise<Game | null> {
+export async function latestGame(profile: string): Promise<Game | null> {
   const { data } = await db()
     .from("games")
     .select("*")
+    .eq("profile", profile)
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();

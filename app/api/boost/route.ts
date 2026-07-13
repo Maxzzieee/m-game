@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getMeta } from "@/lib/turn";
 import { db } from "@/lib/supabase";
@@ -9,13 +9,13 @@ const STATS = ["brains", "face", "brawn", "guts"] as const;
 
 // Arc-transition growth: the player picks ONE stat to raise by +1 (cap +5).
 export async function POST(req: Request) {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
   const { stat } = await req.json().catch(() => ({}));
   if (!STATS.includes(stat)) return Response.json({ error: "bad stat" }, { status: 400 });
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ error: "no game" }, { status: 400 });
   if (!getMeta(game).pending_stat_boost) {
     return Response.json({ error: "no growth pending" }, { status: 400 });

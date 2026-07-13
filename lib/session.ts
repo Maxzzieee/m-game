@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 
-// Minimal single-player gate: a passcode unlocks a signed cookie. No user
-// accounts, no Supabase Auth. The Anthropic + Supabase keys never leave the
-// server; this just stops a random visitor to the public URL from playing/
-// spending your API budget.
+// Household gate: each passcode maps to a PROFILE, and every save belongs to a
+// profile. Same URL, two lives: APP_PASSCODE → 'main', APP_PASSCODE_2 → 'p2'.
+// No accounts; the signed cookie carries which profile is playing. Keys stay
+// server-side; this just stops strangers (and keeps the two lives separate).
 
 const COOKIE = "sls_session";
 
@@ -19,29 +19,37 @@ function sign(value: string): string {
   return `${value}.${sig}`;
 }
 
-function verify(token: string | undefined): boolean {
-  if (!token) return false;
+function verify(token: string | undefined): string | null {
+  if (!token) return null;
   const idx = token.lastIndexOf(".");
-  if (idx < 0) return false;
+  if (idx < 0) return null;
   const value = token.slice(0, idx);
   const expected = sign(value);
-  // constant-time compare
   const a = Buffer.from(token);
   const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  return value; // the profile id
 }
 
-export function checkPasscode(input: string): boolean {
-  const pass = process.env.APP_PASSCODE;
-  if (!pass) throw new Error("Missing APP_PASSCODE. Copy .env.example to .env.local.");
-  const a = Buffer.from(input);
-  const b = Buffer.from(pass);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
 }
 
-export async function grantSession() {
+// Which profile does this passcode unlock? null = wrong passcode.
+export function profileForPasscode(input: string): string | null {
+  const main = process.env.APP_PASSCODE;
+  if (!main) throw new Error("Missing APP_PASSCODE. Copy .env.example to .env.local.");
+  if (safeEqual(input, main)) return "main";
+  const p2 = process.env.APP_PASSCODE_2;
+  if (p2 && safeEqual(input, p2)) return "p2";
+  return null;
+}
+
+export async function grantSession(profile: string) {
   const jar = await cookies();
-  jar.set(COOKIE, sign("ok"), {
+  jar.set(COOKIE, sign(profile), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -55,14 +63,22 @@ export async function clearSession() {
   jar.delete(COOKIE);
 }
 
-export async function isAuthed(): Promise<boolean> {
+export async function sessionProfile(): Promise<string | null> {
   const jar = await cookies();
-  return verify(jar.get(COOKIE)?.value);
+  const value = verify(jar.get(COOKIE)?.value);
+  // Back-compat: pre-profile cookies carried the literal value "ok".
+  if (value === "ok") return "main";
+  return value;
 }
 
-// Guard for route handlers. Returns null if OK, or a 401 Response if not.
-export async function requireAuth(): Promise<Response | null> {
-  if (await isAuthed()) return null;
+export async function isAuthed(): Promise<boolean> {
+  return (await sessionProfile()) !== null;
+}
+
+// Guard for route handlers: returns the profile id, or a 401 Response.
+export async function requireProfile(): Promise<string | Response> {
+  const profile = await sessionProfile();
+  if (profile) return profile;
   return new Response(JSON.stringify({ error: "unauthorized" }), {
     status: 401,
     headers: { "content-type": "application/json" },

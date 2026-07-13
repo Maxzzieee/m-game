@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getMeta, runStoryTurn } from "@/lib/turn";
 
@@ -11,14 +11,14 @@ export const maxDuration = 60;
 //
 // Body: { mode: "start" | "action" | "resolve", action?: string, big?: boolean }
 export async function POST(req: Request) {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
   const body = await req.json().catch(() => ({}));
   const mode = body.mode as "start" | "action" | "resolve" | "nudge";
   const big = !!body.big;
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ error: "no game" }, { status: 400 });
 
   // Build the mode object.

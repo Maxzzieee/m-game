@@ -1,4 +1,4 @@
-import { checkPasscode, grantSession, isAuthed } from "@/lib/session";
+import { grantSession, isAuthed, profileForPasscode } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -8,9 +8,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const { passcode } = await req.json().catch(() => ({ passcode: "" }));
-  if (typeof passcode !== "string" || !checkPasscode(passcode)) {
+  const profile = typeof passcode === "string" ? profileForPasscode(passcode) : null;
+  if (!profile) {
     return Response.json({ error: "wrong passcode" }, { status: 401 });
   }
-  await grantSession();
-  return Response.json({ ok: true });
+  await grantSession(profile);
+  return Response.json({ ok: true, profile });
 }

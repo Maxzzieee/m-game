@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { db } from "@/lib/supabase";
 
@@ -8,10 +8,10 @@ export const runtime = "nodejs";
 // seeds, and the arc journal (see schema foreign keys). The UI then drops
 // back to the character-creation ceremony.
 export async function POST() {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ ok: true });
 
   const { error } = await db().from("games").delete().eq("id", game.id);

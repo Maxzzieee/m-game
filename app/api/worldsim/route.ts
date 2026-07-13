@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { maybeRunWorldSim } from "@/lib/agents/worldsim";
 
@@ -9,10 +9,10 @@ export const maxDuration = 30;
 // should have moved (real-time gap since last play) and, if so, runs the
 // world-sim agent. Fire-and-forget from the UI's perspective.
 export async function POST() {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ ran: false });
 
   try {

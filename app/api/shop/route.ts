@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { improveMentalState, shopItem } from "@/lib/shop";
 import { db } from "@/lib/supabase";
@@ -8,14 +8,14 @@ export const runtime = "nodejs";
 // Buy an item. Gear lands in games.items (rendered on the avatar); consumables
 // apply their effect immediately. Money can't go negative at the till.
 export async function POST(req: Request) {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
   const { item: itemId } = await req.json().catch(() => ({}));
   const item = shopItem(String(itemId ?? ""));
   if (!item) return Response.json({ error: "no such item" }, { status: 400 });
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ error: "no game" }, { status: 400 });
 
   if (item.kind === "gear" && game.items.includes(item.id)) {

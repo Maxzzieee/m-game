@@ -23,6 +23,9 @@ create table if not exists games (
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now(),
 
+  -- which household player owns this save ('main' | 'p2', mapped from passcode)
+  profile           text not null default 'main',
+
   -- identity
   char_name         text not null,
   stereotype        text not null,           -- Mugger | Athlete | Joker | Pai Kia | Average Joe
@@ -89,6 +92,7 @@ create table if not exists npcs (
   first_arc         int  not null default 1,
   meta              jsonb not null default '{}'::jsonb
 );
+create index if not exists games_profile_idx on games(profile, updated_at desc);
 create index if not exists npcs_game_idx on npcs(game_id);
 
 -- ----------------------------------------------------------------------------

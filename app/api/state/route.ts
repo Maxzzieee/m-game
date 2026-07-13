@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/session";
+import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getActiveNpcs, getActivePursuit, getRecentEvents } from "@/lib/memory";
 import { getMeta } from "@/lib/turn";
@@ -8,10 +8,10 @@ export const runtime = "nodejs";
 // Snapshot of everything the UI needs to render: the character sheet, active
 // NPCs, the visible transcript, and any pending dice roll.
 export async function GET() {
-  const guard = await requireAuth();
-  if (guard) return guard;
+  const auth = await requireProfile();
+  if (auth instanceof Response) return auth;
 
-  const game = await latestGame();
+  const game = await latestGame(auth);
   if (!game) return Response.json({ game: null });
 
   const [npcs, recent, pursuit] = await Promise.all([
