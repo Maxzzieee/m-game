@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import CharacterSheet from "./CharacterSheet";
 import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
-import { IconClose, IconSend, IconSheet, IconSpark } from "./Icons";
+import { IconClose, IconSend, IconSheet } from "./Icons";
 import { ambianceFor, diffGame, parseChoices, type Choice, type DeltaToast } from "@/lib/ui";
 import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
 import type { DiceResult, Game, GameEvent, Npc, Pursuit } from "@/lib/types";
@@ -129,7 +129,6 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   });
   const [toasts, setToasts] = useState<DeltaToast[]>([]);
   const [input, setInput] = useState("");
-  const [useBig, setUseBig] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -167,7 +166,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         const res = await fetch("/api/turn", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ...body, big: useBig }),
+          body: JSON.stringify(body),
         });
         if (!res.ok || !res.body) {
           setLive((l) => ({ ...l, dm: "*[the DM lost the plot — try again]*" }));
@@ -187,10 +186,9 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         await refreshState();
         setLive({});
         setStreaming(false);
-        setUseBig(false);
       }
     },
-    [refreshState, useBig],
+    [refreshState],
   );
 
   // Auto-open the very first scene.
@@ -290,18 +288,6 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
             <h1 className="mt-0.5 font-serif text-xl font-medium">{game.char_name}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setUseBig((v) => !v)}
-              title="Route the next beat through the big model (Opus)"
-              aria-pressed={useBig}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors duration-200 ${
-                useBig
-                  ? "border-neon/70 bg-neon/10 text-neon"
-                  : "border-void-700 text-dim hover:border-dim/50 hover:text-parchment/80"
-              }`}
-            >
-              <IconSpark className="h-3.5 w-3.5" /> BIG BEAT
-            </button>
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="Open character sheet"

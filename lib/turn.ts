@@ -166,10 +166,10 @@ export async function runStoryTurn(
     nudge: mode.kind === "nudge",
   });
 
-  // Karma cash-ins are pivotal scenes — route them to the big model.
-  const useBig = opts.big || karmaCashIn !== null;
-
-  const { text, delta } = await runDmTurn(userMessage, { useBig, onText: opts.onText });
+  const { text, delta } = await runDmTurn(userMessage, {
+    useBig: opts.big,
+    onText: opts.onText,
+  });
 
   // Persist the DM scene.
   await recordEvent(game, {
