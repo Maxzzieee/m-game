@@ -66,6 +66,15 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
         description:
           "Advance in-game time as scenes move: absolute 'YYYY-MM', never earlier than the current date. Small scenes may share a month; montages and holidays jump months.",
       },
+      next_beat: {
+        type: ["object", "null"],
+        description:
+          "ALWAYS maintain the next significant dated story moment (a trial, exams, a confession, enlistment). Shown to the player as their horizon; montages travel toward it. Only send when it changes.",
+        properties: {
+          label: { type: "string", description: "Short, evocative: 'Barca satellite trial'." },
+          date: { type: "string", description: "'YYYY-MM', at or after the current date." },
+        },
+      },
       awaiting_roll: {
         type: ["object", "null"],
         description:

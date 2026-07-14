@@ -138,6 +138,7 @@ export interface TurnDelta {
   tags?: string[];
   choices?: ChoiceOption[];
   ingame_date?: string; // absolute "YYYY-MM", monotonic
+  next_beat?: { label: string; date: string } | null; // the next dated story milestone
   awaiting_roll?: {
     stat: string;
     dc: number;

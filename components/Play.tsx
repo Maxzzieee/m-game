@@ -120,7 +120,12 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     initial.choices ?? null,
   );
   const [sceneHook, setSceneHook] = useState<string | null>(initial.scene_hook ?? null);
+  const [nextBeat, setNextBeat] = useState<{ label: string; date: string } | null>(
+    initial.next_beat ?? null,
+  );
   const [pursuit, setPursuit] = useState<Pursuit | null>(initial.pursuit ?? null);
+  const [passTimeOpen, setPassTimeOpen] = useState(false);
+  const [focusText, setFocusText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [overlay, setOverlay] = useState<{ open: boolean; dice: DiceResult | null }>({
@@ -155,6 +160,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setPendingBoost(!!data.pending_stat_boost);
     setStructuredChoices(data.choices ?? null);
     setSceneHook(data.scene_hook ?? null);
+    setNextBeat(data.next_beat ?? null);
     setPursuit(data.pursuit ?? null);
   }, []);
 
@@ -210,6 +216,23 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     await streamTurn({ mode: "action", action }, action);
   }
 
+  async function passTime(span: "weeks" | "months" | "beat") {
+    if (streaming || rolling) return;
+    const focus = focusText.trim();
+    setPassTimeOpen(false);
+    setFocusText("");
+    const label =
+      span === "beat"
+        ? `until ${nextBeat?.label ?? "the next beat"}`
+        : span === "months"
+          ? "a few months"
+          : "a few weeks";
+    await streamTurn(
+      { mode: "montage", span, focus: focus || undefined },
+      `⏩ Time passes — ${label}${focus ? ` (${focus})` : ""}`,
+    );
+  }
+
   async function roll() {
     if (rolling || streaming) return;
     setRolling(true);
@@ -240,7 +263,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   const choices: Choice[] =
     busy || awaiting
       ? []
-      : structuredChoices?.length
+      : Array.isArray(structuredChoices) && structuredChoices.length
         ? structuredChoices
         : lastDm
           ? parseChoices(lastDm.prose)
@@ -286,6 +309,11 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
               Arc {game.arc} · {game.arc_name} · {cal.shortLabel}
             </p>
             <h1 className="mt-0.5 font-serif text-xl font-medium">{game.char_name}</h1>
+            {nextBeat && (
+              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-neon/80">
+                Next: {nextBeat.label} · {nextBeat.date}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -423,9 +451,59 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
                   <IconSend /> Act
                 </button>
               </div>
-              <p className="mt-2 hidden font-mono text-[10px] text-faint sm:block">
-                ENTER to act · SHIFT+ENTER for a new line
-              </p>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <p className="hidden font-mono text-[10px] text-faint sm:block">
+                  ENTER to act · SHIFT+ENTER for a new line
+                </p>
+                <button
+                  onClick={() => setPassTimeOpen((v) => !v)}
+                  disabled={busy}
+                  aria-expanded={passTimeOpen}
+                  className={`ml-auto cursor-pointer rounded-lg border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors duration-200 disabled:cursor-default disabled:opacity-40 ${
+                    passTimeOpen
+                      ? "border-neon/60 text-neon"
+                      : "border-void-700 text-dim hover:border-dim/50 hover:text-parchment/80"
+                  }`}
+                >
+                  ⏩ PASS TIME
+                </button>
+              </div>
+
+              {passTimeOpen && (
+                <div className="animate-fadeup mt-3 rounded-2xl border border-void-700 bg-void-800 p-4 shadow-card">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
+                    Let the weeks fold — the world may interrupt
+                  </p>
+                  <input
+                    value={focusText}
+                    onChange={(e) => setFocusText(e.target.value)}
+                    placeholder="spend the time doing… (optional)"
+                    className="mt-3 w-full rounded-xl border border-void-700 bg-void-900/50 px-3.5 py-2.5 text-sm outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/60"
+                  />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => void passTime("weeks")}
+                      className="cursor-pointer rounded-lg border border-void-700 px-3.5 py-2 text-sm text-parchment/85 transition-colors duration-200 hover:border-neon/50 hover:text-neon"
+                    >
+                      A few weeks
+                    </button>
+                    <button
+                      onClick={() => void passTime("months")}
+                      className="cursor-pointer rounded-lg border border-void-700 px-3.5 py-2 text-sm text-parchment/85 transition-colors duration-200 hover:border-neon/50 hover:text-neon"
+                    >
+                      A few months
+                    </button>
+                    {nextBeat && (
+                      <button
+                        onClick={() => void passTime("beat")}
+                        className="cursor-pointer rounded-lg border border-neon/50 bg-neon/5 px-3.5 py-2 text-sm text-neon transition-colors duration-200 hover:bg-neon/10"
+                      >
+                        Until: {nextBeat.label}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

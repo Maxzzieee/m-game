@@ -15,6 +15,7 @@ export interface Snapshot {
   pending_stat_boost?: boolean;
   choices?: ChoiceOption[] | null;
   scene_hook?: string | null;
+  next_beat?: { label: string; date: string } | null;
   pursuit?: Pursuit | null;
 }
 

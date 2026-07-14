@@ -37,10 +37,63 @@ interface GameMeta {
   pending_stat_boost?: boolean;
   choices?: ChoiceOption[] | null;
   scene_hook?: string | null;
+  next_beat?: { label: string; date: string } | null;
 }
 
 export function getMeta(game: Game): GameMeta {
   return (game.meta as GameMeta) ?? {};
+}
+
+// ---- tool-output sanitizers -------------------------------------------------
+// The DM's record_turn input is model-generated; never store it unvalidated.
+// (A string in meta.choices once white-screened production: strings have
+// .length, so the client skipped its fallback and called .map on it.)
+
+function sanitizeChoices(raw: unknown): ChoiceOption[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: ChoiceOption[] = [];
+  for (const c of raw) {
+    if (
+      c &&
+      typeof c === "object" &&
+      typeof (c as ChoiceOption).key === "string" &&
+      typeof (c as ChoiceOption).label === "string" &&
+      (c as ChoiceOption).label.trim()
+    ) {
+      out.push({ key: (c as ChoiceOption).key.slice(0, 2), label: (c as ChoiceOption).label });
+    }
+    if (out.length >= 4) break;
+  }
+  return out.length >= 2 ? out : null;
+}
+
+function sanitizeBeat(
+  raw: unknown,
+  currentDate: string,
+): { label: string; date: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const b = raw as Record<string, unknown>;
+  if (typeof b.label !== "string" || !b.label.trim()) return null;
+  if (typeof b.date !== "string" || !/^\d{4}-\d{2}$/.test(b.date)) return null;
+  if (b.date < currentDate) return null;
+  return { label: b.label.trim().slice(0, 80), date: b.date };
+}
+
+function sanitizeAwaitingRoll(raw: unknown): AwaitingRoll | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.stat !== "string" || typeof r.dc !== "number" || typeof r.reason !== "string") {
+    return null;
+  }
+  const mode =
+    r.mode === "advantage" || r.mode === "disadvantage" ? r.mode : ("normal" as const);
+  return {
+    stat: r.stat,
+    dc: Math.max(1, Math.min(30, Math.round(r.dc))),
+    reason: r.reason,
+    mode,
+    mode_reason: typeof r.mode_reason === "string" ? r.mode_reason : undefined,
+  };
 }
 
 export async function setMeta(gameId: string, patch: GameMeta): Promise<void> {
@@ -101,7 +154,8 @@ type Mode =
   | { kind: "start" }
   | { kind: "action"; action: string }
   | { kind: "resolve"; dice: DiceResult }
-  | { kind: "nudge" }; // NPC-initiated scene: the world moves first
+  | { kind: "nudge" } // NPC-initiated scene: the world moves first
+  | { kind: "montage"; span: "weeks" | "months" | "beat"; focus?: string }; // pass time
 
 // Orchestrate one story turn: assemble DB-owned context, run the DM (streaming
 // prose via onText), persist the event + apply the structured delta, and fold
@@ -119,6 +173,14 @@ export async function runStoryTurn(
       role: "player",
       prose: mode.action.trim(),
       tags: deriveSearchTags(mode.action, npcsForTags),
+    });
+  } else if (mode.kind === "montage") {
+    const spanLabel =
+      mode.span === "beat" ? "until the next beat" : mode.span === "months" ? "a few months" : "a few weeks";
+    await recordEvent(game, {
+      role: "player",
+      prose: `⏩ passes time (${spanLabel}${mode.focus ? ` — ${mode.focus}` : ""})`,
+      tags: ["montage"],
     });
   }
 
@@ -153,6 +215,7 @@ export async function runStoryTurn(
     pastCanon,
     pursuit,
     sceneHook,
+    meta.next_beat ?? null,
   );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
@@ -164,6 +227,7 @@ export async function runStoryTurn(
     playerAction: mode.kind === "action" ? mode.action : "",
     diceResult: mode.kind === "resolve" ? mode.dice : null,
     nudge: mode.kind === "nudge",
+    montage: mode.kind === "montage" ? { span: mode.span, focus: mode.focus } : null,
   });
 
   const { text, delta } = await runDmTurn(userMessage, {
@@ -183,13 +247,21 @@ export async function runStoryTurn(
   const closingArc = game.arc;
   const updated = await applyDelta(game, delta);
 
-  // Stash awaiting-roll + structured choices; clear consumed roll, world notes,
-  // and (on nudge) the scene hook.
+  // Stash awaiting-roll + structured choices (both sanitized — model output is
+  // never stored raw); clear consumed roll, world notes, and (on nudge) the hook.
+  const awaitingRoll = sanitizeAwaitingRoll(delta.awaiting_roll);
+  const newBeat = sanitizeBeat(delta.next_beat, updated.ingame_date);
   await setMeta(updated.id, {
-    awaiting_roll: delta.awaiting_roll ?? null,
-    choices: delta.awaiting_roll ? null : (delta.choices ?? null),
+    awaiting_roll: awaitingRoll,
+    choices: awaitingRoll ? null : sanitizeChoices(delta.choices),
     last_roll: null,
     world_notes: null,
+    // Beats persist until replaced; a stale beat (date now in the past) is dropped.
+    ...(newBeat
+      ? { next_beat: newBeat }
+      : meta.next_beat && meta.next_beat.date < updated.ingame_date
+        ? { next_beat: null }
+        : {}),
     ...(mode.kind === "nudge" ? { scene_hook: null } : {}),
     // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
     ...(delta.advance ? { pending_stat_boost: true } : {}),

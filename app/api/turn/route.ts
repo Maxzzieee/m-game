@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (auth instanceof Response) return auth;
 
   const body = await req.json().catch(() => ({}));
-  const mode = body.mode as "start" | "action" | "resolve" | "nudge";
+  const mode = body.mode as "start" | "action" | "resolve" | "nudge" | "montage";
   const big = !!body.big;
 
   const game = await latestGame(auth);
@@ -33,6 +33,13 @@ export async function POST(req: Request) {
     modeArg = { kind: "action" as const, action };
   } else if (mode === "nudge") {
     modeArg = { kind: "nudge" as const };
+  } else if (mode === "montage") {
+    const span = ["weeks", "months", "beat"].includes(body.span) ? body.span : "weeks";
+    const focus =
+      typeof body.focus === "string" && body.focus.trim()
+        ? body.focus.trim().slice(0, 200)
+        : undefined;
+    modeArg = { kind: "montage" as const, span: span as "weeks" | "months" | "beat", focus };
   } else {
     modeArg = { kind: "start" as const };
   }

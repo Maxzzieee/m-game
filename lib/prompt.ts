@@ -47,6 +47,7 @@ export function buildStateBlock(
   pastCanon: string[] = [],
   pursuit: Pursuit | null = null,
   sceneHook: string | null = null,
+  nextBeat: { label: string; date: string } | null = null,
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -60,6 +61,13 @@ export function buildStateBlock(
   lines.push(`Pocket money: $${game.money}${game.money < 0 ? " (IN DEBT)" : ""}`);
   lines.push(`Confirm Plus Chop: ${game.confirm_chop ? "AVAILABLE this arc" : "used"}`);
   lines.push(`CALENDAR: ${sgCalendar(game.ingame_date, game.age).line}`);
+  if (nextBeat) {
+    lines.push(`NEXT BEAT: ${nextBeat.label} · ${nextBeat.date}`);
+  } else {
+    lines.push(
+      "NEXT BEAT: none set — establish one this turn via next_beat (the next dated story milestone).",
+    );
+  }
 
   if (pursuit) {
     const stageName = PURSUIT_STAGES[Math.min(6, Math.max(0, pursuit.stage))];
@@ -166,13 +174,40 @@ export function buildUserMessage(opts: {
   playerAction: string; // "" for the very first scene
   diceResult?: DiceResult | null;
   nudge?: boolean; // NPC-initiated scene: the world moves first
+  montage?: { span: "weeks" | "months" | "beat"; focus?: string } | null;
 }): string {
   const parts = [opts.stateBlock];
   if (opts.memoriesBlock) parts.push(opts.memoriesBlock);
   if (opts.recentBlock) parts.push(opts.recentBlock);
 
   parts.push("=== THIS TURN ===");
-  if (opts.nudge) {
+  if (opts.montage) {
+    const target =
+      opts.montage.span === "beat"
+        ? "up to the NEXT BEAT's date (stop at its doorstep — the beat itself is played live)"
+        : opts.montage.span === "months"
+          ? "about three months"
+          : "a few weeks (about a month)";
+    parts.push(
+      [
+        `MONTAGE: the player passes time — ${target}.`,
+        opts.montage.focus
+          ? `Their focus for this period: "${opts.montage.focus}".`
+          : "No stated focus — let ordinary life fill the time.",
+        "Write ONE compressed montage passage (150-350 words) using the time-skip-with-texture",
+        "rule: named specifics, repetition with variation ('every Tuesday...', 'by the third week...'),",
+        "seasons/festivals from CALENDAR passing through it. Advance ingame_date to the target",
+        "(max 6 months). Apply CHUNKY but capped deltas for the whole period: total stat change",
+        "at most ±1, total reputation at most ±2, money realistic, pursuit note (stage bump only",
+        "if genuinely earned). Grinding costs mental state; rest restores it.",
+        "INTERRUPT LICENCE: you MAY cut the montage short if something demands the player's",
+        "attention — narrate up to that moment, set ingame_date to when it happens, and END",
+        "INSIDE the live scene (normal choices/awaiting_roll rules apply from there). Use this",
+        "when a seed, an NPC's hidden motivation, or a karma cash-in is ripe. Never montage",
+        "through the NEXT BEAT or a pursuit threshold — stop at their doorstep.",
+      ].join(" "),
+    );
+  } else if (opts.nudge) {
     parts.push(
       "The player is present but hasn't acted — the world moves first. Open the scene with " +
         "the SCENE HOOK intrusion from GAME STATE (or, if none, a small believable " +

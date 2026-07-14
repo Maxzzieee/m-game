@@ -29,6 +29,7 @@ export async function GET() {
     pending_stat_boost: meta.pending_stat_boost ?? false,
     choices: meta.choices ?? null,
     scene_hook: meta.scene_hook ?? null,
+    next_beat: meta.next_beat ?? null,
     pursuit,
   });
 }
