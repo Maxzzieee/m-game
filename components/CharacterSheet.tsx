@@ -128,6 +128,14 @@ export default function CharacterSheet({
               CONFIRM PLUS CHOP
             </span>
           )}
+          {game.heng > 0 && (
+            <span
+              className="rounded-full border border-chili/50 bg-chili/5 px-3 py-1 font-mono text-[11px] tracking-wider text-chili"
+              title="Reroll tokens — spend one after a roll settles; second roll stands"
+            >
+              HENG ×{game.heng}
+            </span>
+          )}
         </div>
       </div>
 

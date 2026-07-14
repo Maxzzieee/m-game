@@ -111,7 +111,21 @@ export function RollPrompt({
 
 // The cinematic moment: full-screen overlay while the die is in the air, then
 // the result bursts in its outcome colour before handing back to the story.
-export function RollOverlay({ dice }: { dice: DiceResult | null }) {
+// If the player still holds heng and hasn't rerolled this check, the settled
+// result becomes a decision: accept fate, or burn a token (second roll stands).
+export function RollOverlay({
+  dice,
+  hengLeft = 0,
+  canReroll = false,
+  onAccept,
+  onReroll,
+}: {
+  dice: DiceResult | null;
+  hengLeft?: number;
+  canReroll?: boolean;
+  onAccept?: () => void;
+  onReroll?: () => void;
+}) {
   const [display, setDisplay] = useState<number>(1);
   const [settled, setSettled] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -195,6 +209,32 @@ export function RollOverlay({ dice }: { dice: DiceResult | null }) {
               {dice.stateMod !== 0 && ` ${dice.stateMod > 0 ? "+" : ""}${dice.stateMod}`} ={" "}
               {dice.total} vs DC {dice.dc}
             </p>
+
+            {onAccept && (
+              <div className="mt-7 flex items-center justify-center gap-3">
+                <button
+                  onClick={onAccept}
+                  autoFocus
+                  className="cursor-pointer rounded-xl bg-neon px-6 py-3 font-semibold text-ink shadow-glow transition-all duration-200 hover:brightness-110"
+                >
+                  Accept fate
+                </button>
+                {canReroll && hengLeft > 0 && onReroll && (
+                  <button
+                    onClick={onReroll}
+                    className="cursor-pointer rounded-xl border border-chili/60 px-6 py-3 font-semibold text-chili transition-colors duration-200 hover:bg-chili/10"
+                    title="Second roll stands — even if it's worse"
+                  >
+                    洗 Reroll · heng ×{hengLeft}
+                  </button>
+                )}
+              </div>
+            )}
+            {onAccept && canReroll && hengLeft > 0 && (
+              <p className="mt-2.5 font-mono text-[10px] uppercase tracking-widest text-dim">
+                second roll stands, even if worse
+              </p>
+            )}
           </div>
         )}
       </div>

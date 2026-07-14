@@ -102,6 +102,14 @@ export function diffGame(prev: Game, next: Game): DeltaToast[] {
   if (next.mental_state !== prev.mental_state) {
     push(`${prev.mental_state} → ${next.mental_state}`, "state");
   }
+  if (
+    typeof next.heng === "number" &&
+    typeof prev.heng === "number" &&
+    next.heng !== prev.heng
+  ) {
+    const d = next.heng - prev.heng;
+    push(`Heng ${d > 0 ? "+" : ""}${d}`, d > 0 ? "up" : "down");
+  }
   if (next.arc !== prev.arc) {
     push(`ARC ${next.arc} — ${next.arc_name}`, "state");
   }

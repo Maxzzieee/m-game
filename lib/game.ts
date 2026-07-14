@@ -8,25 +8,27 @@ export { STEREOTYPES, looksTier, sesTier };
 export async function createGame(input: {
   profile: string;
   char_name: string;
-  stereotype: Stereotype;
+  label: string; // preset name or custom archetype label
+  flavour: string;
+  stats: { brains: number; face: number; brawn: number; guts: number };
   ses_roll: number;
   looks_roll: number;
 }): Promise<Game> {
-  const s = STEREOTYPES[input.stereotype];
   const { data, error } = await db()
     .from("games")
     .insert({
       profile: input.profile,
       char_name: input.char_name,
-      stereotype: input.stereotype,
+      stereotype: input.label,
       ses_roll: input.ses_roll,
       ses_tier: sesTier(input.ses_roll),
       looks_roll: input.looks_roll,
       looks_tier: looksTier(input.looks_roll),
-      brains: s.brains,
-      face: s.face,
-      brawn: s.brawn,
-      guts: s.guts,
+      brains: input.stats.brains,
+      face: input.stats.face,
+      brawn: input.stats.brawn,
+      guts: input.stats.guts,
+      meta: { flavour: input.flavour },
     })
     .select("*")
     .single();

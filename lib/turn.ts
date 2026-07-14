@@ -163,7 +163,11 @@ type Mode =
 export async function runStoryTurn(
   game: Game,
   mode: Mode,
-  opts: { big?: boolean; onText?: (c: string) => void } = {},
+  opts: {
+    big?: boolean;
+    onText?: (c: string) => void;
+    onToolStart?: () => void;
+  } = {},
 ): Promise<{ game: Game }> {
   // Record the player's action first (so it's in the recent window if the DM
   // retrieves it). Roll events are recorded by the roll route already.
@@ -233,6 +237,7 @@ export async function runStoryTurn(
   const { text, delta } = await runDmTurn(userMessage, {
     useBig: opts.big,
     onText: opts.onText,
+    onToolStart: opts.onToolStart,
   });
 
   // Persist the DM scene.

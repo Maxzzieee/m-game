@@ -94,19 +94,26 @@ function FateRoll({
 export default function Creation({ onCreated }: { onCreated: () => void }) {
   const [step, setStep] = useState<Step>("name");
   const [name, setName] = useState("");
-  const [pick, setPick] = useState<Stereotype | null>(null);
+  const [pick, setPick] = useState<Stereotype | "custom" | null>(null);
+  const [customText, setCustomText] = useState("");
   const [busy, setBusy] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
+
+  const customReady = pick !== "custom" || customText.trim().length >= 10;
 
   // Both d100s are rolled server-side when the character is created; the
   // ceremony reveals them one at a time.
   async function createAndRoll() {
-    if (!name.trim() || !pick || busy) return;
+    if (!name.trim() || !pick || !customReady || busy) return;
     setBusy(true);
+    const body =
+      pick === "custom"
+        ? { char_name: name.trim(), custom: customText.trim() }
+        : { char_name: name.trim(), stereotype: pick };
     const res = await fetch("/api/character", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ char_name: name.trim(), stereotype: pick }),
+      body: JSON.stringify(body),
     });
     setBusy(false);
     if (res.ok) {
@@ -219,15 +226,60 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
                 </button>
               );
             })}
+
+            {/* none of the boxes fit? */}
+            <button
+              onClick={() => setPick("custom")}
+              className={`cursor-pointer rounded-2xl border border-dashed p-4 text-left shadow-card transition-colors duration-200 ${
+                pick === "custom"
+                  ? "border-neon/70 bg-void-700/50"
+                  : "border-void-700 bg-void-800/60 hover:border-dim/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-serif text-lg font-medium">Write your own</span>
+                {pick === "custom" && <span className="h-2 w-2 rounded-full bg-neon" aria-hidden />}
+              </div>
+              <p className="mt-1 font-serif text-sm italic leading-snug text-dim">
+                &ldquo;None of these boxes fit me.&rdquo;
+              </p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-faint">
+                Describe yourself — the game reads you and sets your stats (same budget as
+                everyone)
+              </p>
+            </button>
           </div>
+
+          {pick === "custom" && (
+            <div className="animate-fadeup mt-4">
+              <textarea
+                autoFocus
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="e.g. The kid who draws manga at the back of class, knows every bus route in the East, and never raises his hand even when he knows the answer…"
+                className="w-full resize-none rounded-xl border border-void-700 bg-void-800 px-4 py-3 font-serif text-[15px] leading-relaxed shadow-card outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/70"
+              />
+              {!customReady && (
+                <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-faint">
+                  a little more — give the game something to read
+                </p>
+              )}
+            </div>
+          )}
 
           <button
             onClick={createAndRoll}
-            disabled={!pick || busy}
+            disabled={!pick || !customReady || busy}
             className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neon px-4 py-3.5 font-semibold text-ink shadow-glow transition-all duration-200 hover:brightness-110 disabled:cursor-default disabled:opacity-40"
           >
             <IconD20 className="h-5 w-5" />
-            {busy ? "Consulting fate..." : "Lock in — let fate roll the rest"}
+            {busy
+              ? pick === "custom"
+                ? "Reading you..."
+                : "Consulting fate..."
+              : "Lock in — let fate roll the rest"}
           </button>
           <p className="mt-3 text-center font-serif text-sm italic text-dim">
             Your family and your face are not up to you. That&apos;s the point.
@@ -267,7 +319,11 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
             {game.stereotype} · {game.ses_tier} · {game.looks_tier}
           </p>
           <p className="mx-auto mt-6 max-w-[34ch] font-serif italic leading-relaxed text-parchment/80">
-            &ldquo;{STEREOTYPES[game.stereotype].flavour}&rdquo;
+            &ldquo;
+            {(game.meta as { flavour?: string })?.flavour ??
+              STEREOTYPES[game.stereotype as Stereotype]?.flavour ??
+              ""}
+            &rdquo;
           </p>
           <button
             onClick={onCreated}

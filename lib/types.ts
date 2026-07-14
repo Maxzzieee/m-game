@@ -14,7 +14,7 @@ export interface Game {
   profile: string; // 'main' | 'p2' — which household player owns this save
 
   char_name: string;
-  stereotype: Stereotype;
+  stereotype: string; // preset name or a custom LLM-derived label ("The Quiet Artist")
   ses_roll: number;
   ses_tier: string;
   looks_roll: number;
@@ -43,6 +43,7 @@ export interface Game {
   on_fire_checks: number;
   karma: number;
   confirm_chop: boolean;
+  heng: number; // reroll tokens (+1 per arc, cap 3)
 
   dm_model_pref: "standard" | "big";
   turn_no: number;

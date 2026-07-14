@@ -1,5 +1,7 @@
 import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
+import { getActivePursuit } from "@/lib/memory";
+import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
 import { getMeta, runStoryTurn } from "@/lib/turn";
 
 export const runtime = "nodejs";
@@ -48,10 +50,25 @@ export async function POST(req: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        await runStoryTurn(game, modeArg, {
+        const { game: updated } = await runStoryTurn(game, modeArg, {
           big: big || game.dm_model_pref === "big",
           onText: (chunk) => controller.enqueue(encoder.encode(chunk)),
+          // Prose done, tool call generating — let the UI show skeletons.
+          onToolStart: () => controller.enqueue(encoder.encode(MARK_BOOKKEEPING)),
         });
+        // Inline the fresh state so the client renders choices instantly,
+        // without waiting on a second /api/state round trip.
+        const meta = getMeta(updated);
+        const pursuit = await getActivePursuit(updated.id);
+        const payload: InlineState = {
+          game: updated,
+          awaiting_roll: meta.awaiting_roll ?? null,
+          choices: meta.choices ?? null,
+          next_beat: meta.next_beat ?? null,
+          scene_hook: meta.scene_hook ?? null,
+          pursuit,
+        };
+        controller.enqueue(encoder.encode(MARK_STATE + JSON.stringify(payload)));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         controller.enqueue(encoder.encode(`\n\n[the DM stumbled: ${msg}]`));

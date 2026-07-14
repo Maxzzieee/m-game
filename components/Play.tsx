@@ -6,6 +6,7 @@ import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
 import { IconClose, IconSend, IconSheet } from "./Icons";
 import { ambianceFor, diffGame, parseChoices, type Choice, type DeltaToast } from "@/lib/ui";
 import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
+import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
 import type { DiceResult, Game, GameEvent, Npc, Pursuit } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 import type { Snapshot } from "./Game";
@@ -127,11 +128,13 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   const [passTimeOpen, setPassTimeOpen] = useState(false);
   const [focusText, setFocusText] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [bookkeeping, setBookkeeping] = useState(false);
   const [rolling, setRolling] = useState(false);
-  const [overlay, setOverlay] = useState<{ open: boolean; dice: DiceResult | null }>({
-    open: false,
-    dice: null,
-  });
+  const [overlay, setOverlay] = useState<{
+    open: boolean;
+    dice: DiceResult | null;
+    canReroll: boolean;
+  }>({ open: false, dice: null, canReroll: false });
   const [toasts, setToasts] = useState<DeltaToast[]>([]);
   const [input, setInput] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -139,6 +142,10 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   const bottomRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveRef = useRef(live);
+  useEffect(() => {
+    liveRef.current = live;
+  }, [live]);
 
   const refreshState = useCallback(async () => {
     const data = (await fetch("/api/state").then((r) => r.json())) as Snapshot;
@@ -164,10 +171,31 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setPursuit(data.pursuit ?? null);
   }, []);
 
+  // Apply the state payload inlined at the end of the turn stream — choices and
+  // sheet update the instant the DM finishes, no extra round trip.
+  const applyInline = useCallback((s: InlineState) => {
+    setGame((prev) => {
+      const d = diffGame(prev, s.game);
+      if (d.length) {
+        setToasts(d);
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToasts([]), 5000);
+      }
+      return s.game;
+    });
+    setAwaiting(s.awaiting_roll ?? null);
+    setStructuredChoices(s.choices ?? null);
+    setNextBeat(s.next_beat ?? null);
+    setSceneHook(s.scene_hook ?? null);
+    setPursuit(s.pursuit ?? null);
+  }, []);
+
   const streamTurn = useCallback(
     async (body: Record<string, unknown>, playerText?: string) => {
       setStreaming(true);
+      setBookkeeping(false);
       setLive((l) => ({ ...l, player: playerText ?? l.player, dm: "" }));
+      let gotInline = false;
       try {
         const res = await fetch("/api/turn", {
           method: "POST",
@@ -182,19 +210,86 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         const reader = res.body.getReader();
         const dec = new TextDecoder();
         let acc = "";
+        let stateBuf: string | null = null;
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-          acc += dec.decode(value, { stream: true });
-          setLive((l) => ({ ...l, dm: acc }));
+          let chunk = dec.decode(value, { stream: true });
+
+          if (stateBuf !== null) {
+            stateBuf += chunk;
+            continue;
+          }
+          const stateIdx = chunk.indexOf(MARK_STATE);
+          if (stateIdx >= 0) {
+            stateBuf = chunk.slice(stateIdx + 1);
+            chunk = chunk.slice(0, stateIdx);
+          }
+          const bkIdx = chunk.indexOf(MARK_BOOKKEEPING);
+          if (bkIdx >= 0) {
+            setBookkeeping(true);
+            chunk = chunk.replace(MARK_BOOKKEEPING, "");
+          }
+          if (chunk) {
+            acc += chunk;
+            setLive((l) => ({ ...l, dm: acc }));
+          }
+        }
+        if (stateBuf) {
+          try {
+            applyInline(JSON.parse(stateBuf) as InlineState);
+            gotInline = true;
+          } catch {
+            // fall through to refreshState
+          }
         }
       } finally {
-        await refreshState();
-        setLive({});
+        if (gotInline) {
+          // Zero extra latency: append the scene to the transcript locally
+          // (identical content to the server rows; real ids arrive on the next
+          // full state fetch) and unlock immediately.
+          const l = liveRef.current;
+          const stamp = Date.now();
+          setEvents((prev) => {
+            const synth: GameEvent[] = [];
+            if (l.player) {
+              synth.push({
+                id: `local-p-${stamp}`,
+                role: "player",
+                prose: l.player,
+                dice: l.dice ?? null,
+                tags: [],
+              } as unknown as GameEvent);
+            } else if (l.dice) {
+              synth.push({
+                id: `local-r-${stamp}`,
+                role: "player",
+                prose: "",
+                dice: l.dice,
+                tags: [],
+              } as unknown as GameEvent);
+            }
+            if (l.dm) {
+              synth.push({
+                id: `local-d-${stamp}`,
+                role: "dm",
+                prose: l.dm,
+                dice: null,
+                tags: [],
+              } as unknown as GameEvent);
+            }
+            return [...prev, ...synth];
+          });
+          setLive({});
+        } else {
+          await refreshState();
+          setLive({});
+        }
+        setBookkeeping(false);
         setStreaming(false);
       }
     },
-    [refreshState],
+    [refreshState, applyInline],
   );
 
   // Auto-open the very first scene.
@@ -233,10 +328,18 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     );
   }
 
+  // Accept the settled roll: close the overlay and stream the consequence.
+  async function acceptRoll(dice: DiceResult) {
+    setOverlay({ open: false, dice: null, canReroll: false });
+    setLive((l) => ({ ...l, dice }));
+    setRolling(false);
+    await streamTurn({ mode: "resolve" });
+  }
+
   async function roll() {
     if (rolling || streaming) return;
     setRolling(true);
-    setOverlay({ open: true, dice: null });
+    setOverlay({ open: true, dice: null, canReroll: false });
     try {
       const { dice } = (await fetch("/api/roll", { method: "POST" }).then((r) => r.json())) as {
         dice: DiceResult;
@@ -244,16 +347,23 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
       setAwaiting(null);
       // let the die churn a beat before settling
       await sleep(650);
-      setOverlay({ open: true, dice });
-      await sleep(1500);
-      setOverlay({ open: false, dice: null });
-      setLive((l) => ({ ...l, dice }));
-      setRolling(false);
-      await streamTurn({ mode: "resolve" });
+      // Settle into a decision: accept, or (once, if heng remains) reroll.
+      setOverlay({ open: true, dice, canReroll: game.heng > 0 });
     } catch {
-      setOverlay({ open: false, dice: null });
+      setOverlay({ open: false, dice: null, canReroll: false });
       setRolling(false);
     }
+  }
+
+  // Burn a heng token: reroll the same check; the second roll stands.
+  async function rerollHeng() {
+    const res = await fetch("/api/reroll", { method: "POST" });
+    if (!res.ok) return;
+    const { dice } = (await res.json()) as { dice: DiceResult };
+    setGame((g) => ({ ...g, heng: Math.max(0, g.heng - 1) }));
+    setOverlay({ open: true, dice: null, canReroll: false });
+    await sleep(650);
+    setOverlay({ open: true, dice, canReroll: false }); // no chaining
   }
 
   const busy = streaming || rolling;
@@ -283,7 +393,15 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         style={{ background: `radial-gradient(900px 600px at 50% 0%, ${ambiance}, transparent 75%)` }}
       />
 
-      {overlay.open && <RollOverlay dice={overlay.dice} />}
+      {overlay.open && (
+        <RollOverlay
+          dice={overlay.dice}
+          hengLeft={game.heng}
+          canReroll={overlay.canReroll}
+          onAccept={overlay.dice ? () => void acceptRoll(overlay.dice!) : undefined}
+          onReroll={overlay.canReroll ? () => void rerollHeng() : undefined}
+        />
+      )}
 
       {pendingBoost && !streaming && <GrowthModal game={game} onPicked={refreshState} />}
 
@@ -335,11 +453,25 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
 
           {live.player && <PlayerBubble text={live.player} />}
           {live.dice && <DiceChip dice={live.dice} />}
-          {live.dm !== undefined && live.dm !== "" && <Narration text={live.dm} streaming />}
+          {live.dm !== undefined && live.dm !== "" && (
+            <Narration text={live.dm} streaming={!bookkeeping} />
+          )}
           {streaming && live.dm === "" && (
             <p className="font-serif text-sm italic text-dim">
               <span className="blink">the world turns</span>
             </p>
+          )}
+          {/* prose done, choices being written — bridge the gap */}
+          {bookkeeping && (
+            <div className="grid gap-2" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-11 animate-pulse rounded-xl border border-void-700 bg-void-800/60"
+                  style={{ animationDelay: `${i * 150}ms`, width: `${88 - i * 9}%` }}
+                />
+              ))}
+            </div>
           )}
           <div ref={bottomRef} />
         </div>

@@ -62,6 +62,7 @@ create table if not exists games (
   on_fire_checks    int  not null default 0,          -- remaining [On Fire] checks
   karma             int  not null default 0,          -- HIDDEN counter
   confirm_chop      boolean not null default true,    -- available this arc?
+  heng              int  not null default 2,          -- reroll tokens (+1/arc, cap 3)
 
   -- model preference for this save
   dm_model_pref     text not null default 'standard', -- standard | big

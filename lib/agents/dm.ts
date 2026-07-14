@@ -13,7 +13,13 @@ export interface DmResult {
 // structured TurnDelta captured from the record_turn tool call.
 export async function runDmTurn(
   userMessage: string,
-  opts: { useBig?: boolean; onText?: (chunk: string) => void },
+  opts: {
+    useBig?: boolean;
+    onText?: (chunk: string) => void;
+    // Fires when the prose is done and the record_turn tool call starts
+    // generating — lets the UI show a "bookkeeping" state instead of dead air.
+    onToolStart?: () => void;
+  },
 ): Promise<DmResult> {
   const model = opts.useBig ? MODELS.dmBig : MODELS.dm;
 
@@ -31,6 +37,19 @@ export async function runDmTurn(
 
   if (opts.onText) {
     stream.on("text", (chunk) => opts.onText!(chunk));
+  }
+  if (opts.onToolStart) {
+    let fired = false;
+    stream.on("streamEvent", (event) => {
+      if (
+        !fired &&
+        event.type === "content_block_start" &&
+        event.content_block.type === "tool_use"
+      ) {
+        fired = true;
+        opts.onToolStart!();
+      }
+    });
   }
 
   const final = await stream.finalMessage();

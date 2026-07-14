@@ -54,12 +54,13 @@ export async function applyDelta(game: Game, delta: TurnDelta): Promise<Game> {
   // confirm plus chop spent
   if (delta.confirm_chop_used) patch.confirm_chop = false;
 
-  // arc advance — refresh confirm chop for the new arc
+  // arc advance — refresh confirm chop and bank a heng token for the new arc
   if (delta.advance) {
     patch.arc = delta.advance.arc;
     patch.arc_name = delta.advance.arc_name;
     patch.age = delta.advance.age;
     patch.confirm_chop = true;
+    patch.heng = Math.min(3, (game.heng ?? 0) + 1);
   }
 
   if (Object.keys(patch).length > 0) {
