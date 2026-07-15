@@ -133,12 +133,16 @@ async function recordEvent(
 // [On Fire] charge, and stash the result for the DM's consequence turn. Returns
 // the DiceResult for the client to animate. This is what enforces "the DM never
 // rolls for the player" — the die lives here, not in the model.
-export async function resolvePendingRoll(game: Game): Promise<DiceResult | null> {
+export async function resolvePendingRoll(
+  game: Game,
+  manual?: number[],
+): Promise<DiceResult | null> {
   const meta = getMeta(game);
   const pending = meta.awaiting_roll;
   if (!pending) return null;
 
-  const dice = rollCheck(game, pending.stat, pending.dc, pending.mode ?? "normal");
+  const dice = rollCheck(game, pending.stat, pending.dc, pending.mode ?? "normal", manual);
+  if (manual?.length) dice.manual = true;
   await recordEvent(game, {
     role: "player",
     prose: `(rolled for: ${pending.reason})`,

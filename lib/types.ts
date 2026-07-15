@@ -78,6 +78,7 @@ export interface DiceResult {
   total: number;
   outcome: "nat1" | "fail" | "success" | "nat20";
   margin: number; // total - dc
+  manual?: boolean; // player rolled physical dice and entered the result
 }
 
 export interface GameEvent {

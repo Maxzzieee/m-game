@@ -146,6 +146,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
   useEffect(() => {
     liveRef.current = live;
   }, [live]);
+  const rollGate = useRef(false);
 
   const refreshState = useCallback(async () => {
     const data = (await fetch("/api/state").then((r) => r.json())) as Snapshot;
@@ -336,34 +337,56 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     await streamTurn({ mode: "resolve" });
   }
 
-  async function roll() {
-    if (rolling || streaming) return;
+  // Abort a stuck/failed roll: close the overlay and resync with the server.
+  async function cancelRoll() {
+    setOverlay({ open: false, dice: null, canReroll: false });
+    setRolling(false);
+    await refreshState();
+  }
+
+  // manual = physical dice the player rolled IRL ([n] or [n, n] for adv/dis)
+  async function roll(manual?: number[]) {
+    if (rollGate.current || streaming) return;
+    rollGate.current = true; // synchronous double-tap guard (state lags a frame)
     setRolling(true);
     setOverlay({ open: true, dice: null, canReroll: false });
     try {
-      const { dice } = (await fetch("/api/roll", { method: "POST" }).then((r) => r.json())) as {
-        dice: DiceResult;
-      };
+      const res = await fetch("/api/roll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(manual?.length ? { manual } : {}),
+      });
+      const data = (await res.json().catch(() => ({}))) as { dice?: DiceResult };
+      if (!res.ok || !data.dice) {
+        // e.g. double-fire consumed the pending roll — never churn forever
+        await cancelRoll();
+        return;
+      }
       setAwaiting(null);
-      // let the die churn a beat before settling
-      await sleep(650);
+      await sleep(manual?.length ? 350 : 650); // real dice already had their drama
       // Settle into a decision: accept, or (once, if heng remains) reroll.
-      setOverlay({ open: true, dice, canReroll: game.heng > 0 });
+      setOverlay({ open: true, dice: data.dice, canReroll: game.heng > 0 });
     } catch {
-      setOverlay({ open: false, dice: null, canReroll: false });
-      setRolling(false);
+      await cancelRoll();
+    } finally {
+      rollGate.current = false;
     }
   }
 
   // Burn a heng token: reroll the same check; the second roll stands.
-  async function rerollHeng() {
-    const res = await fetch("/api/reroll", { method: "POST" });
+  async function rerollHeng(manual?: number[]) {
+    const res = await fetch("/api/reroll", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(manual?.length ? { manual } : {}),
+    });
     if (!res.ok) return;
-    const { dice } = (await res.json()) as { dice: DiceResult };
+    const data = (await res.json().catch(() => ({}))) as { dice?: DiceResult };
+    if (!data.dice) return;
     setGame((g) => ({ ...g, heng: Math.max(0, g.heng - 1) }));
     setOverlay({ open: true, dice: null, canReroll: false });
-    await sleep(650);
-    setOverlay({ open: true, dice, canReroll: false }); // no chaining
+    await sleep(manual?.length ? 350 : 650);
+    setOverlay({ open: true, dice: data.dice, canReroll: false }); // no chaining
   }
 
   const busy = streaming || rolling;
@@ -399,7 +422,8 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           hengLeft={game.heng}
           canReroll={overlay.canReroll}
           onAccept={overlay.dice ? () => void acceptRoll(overlay.dice!) : undefined}
-          onReroll={overlay.canReroll ? () => void rerollHeng() : undefined}
+          onReroll={overlay.canReroll ? (manual) => void rerollHeng(manual) : undefined}
+          onCancel={() => void cancelRoll()}
         />
       )}
 
@@ -504,7 +528,12 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           )}
           {awaiting ? (
             <div className="space-y-3">
-              <RollPrompt awaiting={awaiting} rolling={rolling} onRoll={roll} />
+              <RollPrompt
+                awaiting={awaiting}
+                rolling={rolling}
+                onRoll={() => void roll()}
+                onManual={(vals) => void roll(vals)}
+              />
               {/* escape hatch: a pending check never removes your agency */}
               <div className="flex items-end gap-2.5">
                 <label htmlFor="action-alt" className="sr-only">

@@ -29,18 +29,27 @@ export function rollCheck(
   statLabel: string,
   dc: number,
   mode: RollMode = "normal",
+  // Physical dice at the table: the player rolls IRL and enters the result(s).
+  // One value for a normal check, two for advantage/disadvantage.
+  manual?: number[],
 ): DiceResult {
   const key = STAT_MAP[statLabel.toUpperCase()] ?? "guts";
   const statMod = game[key] as number;
   const stateMod = STATE_MOD[game.mental_state] ?? 0;
 
+  const isManual = Array.isArray(manual) && manual.length > 0;
+  const die = (i: number) =>
+    isManual && typeof manual![i] === "number"
+      ? Math.max(1, Math.min(20, Math.round(manual![i])))
+      : d20();
+
   // Advantage / disadvantage: two dice, keep higher / lower. Nat 1 / Nat 20 is
   // judged on the KEPT die (5e convention).
-  const a = d20();
+  const a = die(0);
   let kept = a;
   let discarded: number | null = null;
   if (mode === "advantage" || mode === "disadvantage") {
-    const b = d20();
+    const b = die(1);
     kept = mode === "advantage" ? Math.max(a, b) : Math.min(a, b);
     discarded = mode === "advantage" ? Math.min(a, b) : Math.max(a, b);
   }

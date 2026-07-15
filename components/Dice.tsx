@@ -6,6 +6,54 @@ import type { AwaitingRoll } from "@/lib/turn";
 import { statColor } from "@/lib/ui";
 import { IconD20 } from "./Icons";
 
+// Shared input for entering physical dice results (1 or 2 values by mode).
+function ManualDiceEntry({
+  count,
+  onSubmit,
+  compact,
+}: {
+  count: number;
+  onSubmit: (values: number[]) => void;
+  compact?: boolean;
+}) {
+  const [vals, setVals] = useState<string[]>(Array(count).fill(""));
+  const parsed = vals.map((v) => parseInt(v, 10));
+  const valid = parsed.every((n) => Number.isInteger(n) && n >= 1 && n <= 20);
+
+  return (
+    <div className={`flex items-end gap-2 ${compact ? "" : "flex-wrap"}`}>
+      {vals.map((v, i) => (
+        <input
+          key={i}
+          type="number"
+          min={1}
+          max={20}
+          inputMode="numeric"
+          value={v}
+          onChange={(e) => {
+            const next = [...vals];
+            next[i] = e.target.value;
+            setVals(next);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && valid) onSubmit(parsed);
+          }}
+          placeholder={count === 2 ? `d20 #${i + 1}` : "1–20"}
+          aria-label={count === 2 ? `Physical die ${i + 1} result` : "Physical die result"}
+          className="w-20 rounded-lg border border-void-700 bg-void-900/50 px-3 py-2 text-center font-mono text-sm outline-none transition-colors duration-200 placeholder:text-faint focus:border-neon/60"
+        />
+      ))}
+      <button
+        onClick={() => valid && onSubmit(parsed)}
+        disabled={!valid}
+        className="cursor-pointer rounded-lg border border-void-700 px-3.5 py-2 font-mono text-xs uppercase tracking-wider text-dim transition-colors duration-200 hover:border-neon/50 hover:text-neon disabled:cursor-default disabled:opacity-40"
+      >
+        Use my roll
+      </button>
+    </div>
+  );
+}
+
 export function DiceChip({ dice }: { dice: DiceResult }) {
   const tone =
     dice.outcome === "nat20"
@@ -40,6 +88,14 @@ export function DiceChip({ dice }: { dice: DiceResult }) {
           {dice.mode === "advantage" ? "ADV" : "DIS"}
         </span>
       )}
+      {dice.manual && (
+        <span
+          className="rounded-md border border-void-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-dim"
+          title="Rolled with physical dice at the table"
+        >
+          IRL
+        </span>
+      )}
       <span className="opacity-80">
         d20&nbsp;{dice.d20}
         {dice.d20b !== null && dice.d20b !== undefined && (
@@ -60,10 +116,12 @@ export function RollPrompt({
   awaiting,
   rolling,
   onRoll,
+  onManual,
 }: {
   awaiting: AwaitingRoll;
   rolling: boolean;
   onRoll: () => void;
+  onManual?: (values: number[]) => void;
 }) {
   const c = statColor(awaiting.stat);
   const mode = awaiting.mode ?? "normal";
@@ -105,6 +163,16 @@ export function RollPrompt({
         </span>
         {rolling ? "Rolling..." : "Roll the d20"}
       </button>
+
+      {onManual && !rolling && (
+        <div className="mt-4 border-t border-void-700/60 pt-3.5">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
+            Got real dice? Roll at the table, enter the result
+            {mode !== "normal" ? " — two dice" : ""}
+          </p>
+          <ManualDiceEntry count={mode === "normal" ? 1 : 2} onSubmit={onManual} />
+        </div>
+      )}
     </div>
   );
 }
@@ -119,16 +187,31 @@ export function RollOverlay({
   canReroll = false,
   onAccept,
   onReroll,
+  onCancel,
 }: {
   dice: DiceResult | null;
   hengLeft?: number;
   canReroll?: boolean;
   onAccept?: () => void;
-  onReroll?: () => void;
+  onReroll?: (manual?: number[]) => void;
+  onCancel?: () => void;
 }) {
   const [display, setDisplay] = useState<number>(1);
   const [settled, setSettled] = useState(false);
+  const [manualReroll, setManualReroll] = useState(false);
+  const [stuck, setStuck] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Escape hatch: if the die is still churning after 8s, something upstream
+  // failed — offer a way out instead of spinning forever.
+  useEffect(() => {
+    if (dice) {
+      setStuck(false);
+      return;
+    }
+    const t = setTimeout(() => setStuck(true), 8000);
+    return () => clearTimeout(t);
+  }, [dice]);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -210,7 +293,7 @@ export function RollOverlay({
               {dice.total} vs DC {dice.dc}
             </p>
 
-            {onAccept && (
+            {onAccept && !manualReroll && (
               <div className="mt-7 flex items-center justify-center gap-3">
                 <button
                   onClick={onAccept}
@@ -221,7 +304,7 @@ export function RollOverlay({
                 </button>
                 {canReroll && hengLeft > 0 && onReroll && (
                   <button
-                    onClick={onReroll}
+                    onClick={() => (dice?.manual ? setManualReroll(true) : onReroll())}
                     className="cursor-pointer rounded-xl border border-chili/60 px-6 py-3 font-semibold text-chili transition-colors duration-200 hover:bg-chili/10"
                     title="Second roll stands — even if it's worse"
                   >
@@ -230,12 +313,36 @@ export function RollOverlay({
                 )}
               </div>
             )}
-            {onAccept && canReroll && hengLeft > 0 && (
+            {onAccept && !manualReroll && canReroll && hengLeft > 0 && (
               <p className="mt-2.5 font-mono text-[10px] uppercase tracking-widest text-dim">
                 second roll stands, even if worse
               </p>
             )}
+            {manualReroll && onReroll && dice && (
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-dim">
+                  Roll your real {dice.mode !== "normal" ? "dice" : "die"} again — enter the result
+                </p>
+                <ManualDiceEntry
+                  count={dice.mode !== "normal" ? 2 : 1}
+                  compact
+                  onSubmit={(vals) => {
+                    setManualReroll(false);
+                    onReroll(vals);
+                  }}
+                />
+              </div>
+            )}
           </div>
+        )}
+
+        {!dice && stuck && onCancel && (
+          <button
+            onClick={onCancel}
+            className="animate-fadeup mt-8 cursor-pointer rounded-xl border border-void-700 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-dim transition-colors duration-200 hover:border-chili/50 hover:text-chili"
+          >
+            The die is stuck — put it down
+          </button>
         )}
       </div>
     </div>
