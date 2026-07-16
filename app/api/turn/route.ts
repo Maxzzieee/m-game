@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getActivePursuit } from "@/lib/memory";
+import { captureError } from "@/lib/log";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
 import { getMeta, runStoryTurn } from "@/lib/turn";
 
@@ -70,6 +71,11 @@ export async function POST(req: Request) {
         };
         controller.enqueue(encoder.encode(MARK_STATE + JSON.stringify(payload)));
       } catch (err) {
+        await captureError("api/turn", err, {
+          game_id: game.id,
+          profile: auth,
+          mode: modeArg.kind,
+        });
         const msg = err instanceof Error ? err.message : String(err);
         controller.enqueue(encoder.encode(`\n\n[the DM stumbled: ${msg}]`));
       } finally {

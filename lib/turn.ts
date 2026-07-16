@@ -18,6 +18,7 @@ import {
   getRelevantMemories,
 } from "./memory";
 import { applyDelta, consumeOnFire } from "./state";
+import { captureError } from "./log";
 import { rollCheck } from "./dice";
 import { db } from "./supabase";
 import { ChoiceOption, DiceResult, Game } from "./types";
@@ -64,6 +65,8 @@ function sanitizeChoices(raw: unknown): ChoiceOption[] | null {
     }
     if (out.length >= 4) break;
   }
+  // A lone option isn't a menu — the free-text box already covers "do anything".
+  // (Dropping it silently is intentional; the UI falls back to open input.)
   return out.length >= 2 ? out : null;
 }
 
@@ -278,15 +281,22 @@ export async function runStoryTurn(
     ...(delta.advance ? { pending_stat_boost: true } : {}),
   });
 
-  // Fold old scenes into the journal if we've grown past the verbatim window.
-  await maybeSummarize(updated);
+  // Bookkeeping past this point is best-effort: the scene is already saved, so
+  // a summariser hiccup must never surface as "the DM stumbled" on a turn that
+  // actually succeeded.
+  try {
+    // Fold old scenes into the journal if we've grown past the verbatim window.
+    await maybeSummarize(updated);
+  } catch (err) {
+    await captureError("agent/summarizer", err, { game_id: updated.id, arc: updated.arc });
+  }
 
   // On arc transition, compress the closed arc's journal into canon facts.
   if (delta.advance) {
     try {
       await closeArcCanon(updated, closingArc);
-    } catch {
-      // canon compression failing must never block play
+    } catch (err) {
+      await captureError("agent/canon", err, { game_id: updated.id, arc: closingArc });
     }
   }
 

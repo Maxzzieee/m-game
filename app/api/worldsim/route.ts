@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { maybeRunWorldSim } from "@/lib/agents/worldsim";
+import { captureError } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -18,8 +19,9 @@ export async function POST() {
   try {
     const ran = await maybeRunWorldSim(game);
     return Response.json({ ran });
-  } catch {
-    // The world failing to move must never block play.
+  } catch (err) {
+    // The world failing to move must never block play — but it must be seen.
+    await captureError("agent/worldsim", err, { game_id: game.id, profile: auth });
     return Response.json({ ran: false });
   }
 }

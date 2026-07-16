@@ -1,0 +1,30 @@
+name: CI
+
+# Runs on every push and PR. Catches type errors, broken logic, and build
+# failures before they reach Vercel — and gives a visible signal if a push
+# didn't make it (the "why isn't this deployed?" problem).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests (dice fairness, stat budgets, sanitizers)
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          # Build must not need real secrets — clients are lazily constructed.
+          # If this step ever fails for a missing env var, that's the bug.
+          NODE_ENV: production

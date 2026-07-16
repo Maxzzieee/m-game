@@ -60,6 +60,11 @@ export async function maybeKarmaCashIn(game: Game): Promise<"good" | "bad" | nul
   if (crypto.randomInt(100) >= 30) return null;
   const dir = game.karma > 0 ? "good" : "bad";
   const bleed = game.karma > 0 ? -3 : 3; // move toward 0
-  await db().from("games").update({ karma: game.karma + bleed }).eq("id", game.id);
+  const next = game.karma + bleed;
+  await db().from("games").update({ karma: next }).eq("id", game.id);
+  // Keep the caller's copy in sync. applyDelta later computes karma from this
+  // object — without this the bleed is silently reverted whenever the DM also
+  // reports a karma delta, so karma never drains and cash-ins re-fire forever.
+  game.karma = next;
   return dir;
 }
