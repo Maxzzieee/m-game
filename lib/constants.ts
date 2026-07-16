@@ -1,6 +1,6 @@
 // Pure, dependency-free game data — safe to import into client components.
 
-import { Stereotype } from "./types";
+import type { Stereotype } from "./types";
 
 export const STEREOTYPES: Record<
   Stereotype,

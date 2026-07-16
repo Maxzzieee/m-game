@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { sgCalendar } from "./calendar";
-import { ArcJournal, DiceResult, Game, GameEvent, Npc, Pursuit, Seed } from "./types";
+import type { ArcJournal, DiceResult, Game, GameEvent, Npc, Pursuit, Seed } from "./types";
 
 export const PURSUIT_STAGES = [
   "SPARK",

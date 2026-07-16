@@ -1,5 +1,5 @@
 import { db } from "./supabase";
-import { Game, TurnDelta } from "./types";
+import type { Game, TurnDelta } from "./types";
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 

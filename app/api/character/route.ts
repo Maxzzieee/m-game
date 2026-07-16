@@ -2,7 +2,7 @@ import { requireProfile } from "@/lib/session";
 import { createGame, STEREOTYPES } from "@/lib/game";
 import { deriveArchetype } from "@/lib/agents/archetype";
 import { d100 } from "@/lib/dice";
-import { Stereotype } from "@/lib/types";
+import type { Stereotype } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;

@@ -1,7 +1,7 @@
 // Shop catalog — pure data, safe for client import. Gear shows up on the pixel
 // avatar; consumables patch mental state.
 
-import { MentalState } from "./types";
+import type { MentalState } from "./types";
 
 export type ShopItemId =
   | "kopi_peng"

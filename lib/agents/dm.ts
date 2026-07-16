@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, MODELS, RECORD_TURN_TOOL } from "../anthropic";
 import { systemParam } from "../prompt";
-import { TurnDelta } from "../types";
+import type { TurnDelta } from "../types";
 
 export interface DmResult {
   text: string;

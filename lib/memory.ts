@@ -1,5 +1,5 @@
 import { db } from "./supabase";
-import { ArcJournal, GameEvent, Npc, Pursuit, Seed } from "./types";
+import type { ArcJournal, GameEvent, Npc, Pursuit, Seed } from "./types";
 
 // How many of the most recent events stay verbatim in the prompt. Older ones get
 // folded into the arc journal by the summariser. This keeps per-turn prompt size

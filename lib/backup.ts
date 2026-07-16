@@ -1,5 +1,5 @@
 import { db } from "./supabase";
-import { Game } from "./types";
+import type { Game } from "./types";
 
 // Whole-life backup. The save wipe earlier was unrecoverable — this makes a
 // life a file you own. Export dumps every row belonging to a save; import

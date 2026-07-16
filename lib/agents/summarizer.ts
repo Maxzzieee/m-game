@@ -1,7 +1,7 @@
 import { anthropic, MODELS } from "../anthropic";
 import { db } from "../supabase";
 import { KEEP_VERBATIM } from "../memory";
-import { ArcJournal, Game, GameEvent } from "../types";
+import type { ArcJournal, Game, GameEvent } from "../types";
 
 // Fold older verbatim events into the arc journal so the prompt stays bounded.
 // Runs only when there are events past the verbatim window that haven't been

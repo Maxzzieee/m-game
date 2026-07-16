@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, MODELS } from "../anthropic";
 import { getActiveNpcs, getArcJournal, getPendingSeeds } from "../memory";
 import { db } from "../supabase";
-import { Game } from "../types";
+import type { Game } from "../types";
 
 // The World-Sim agent: runs when the player returns after a real-world gap.
 // It advances NPC lives OFFSCREEN — quiet developments, rumours, a new seed —

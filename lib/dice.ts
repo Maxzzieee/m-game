@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { DiceResult, Game, MentalState, RollMode, StatKey } from "./types";
+import type { DiceResult, Game, MentalState, RollMode, StatKey } from "./types";
 
 // Server-side, auditable d20. This is what enforces "the DM never rolls for the
 // player" — the die lives here, not in the model.

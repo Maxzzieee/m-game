@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { db } from "./supabase";
 import { STEREOTYPES, looksTier, sesTier } from "./constants";
-import { Game, Stereotype } from "./types";
+import type { Game, Stereotype } from "./types";
 
 export { STEREOTYPES, looksTier, sesTier };
 

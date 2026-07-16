@@ -21,7 +21,7 @@ import { applyDelta, consumeOnFire } from "./state";
 import { captureError } from "./log";
 import { rollCheck } from "./dice";
 import { db } from "./supabase";
-import { ChoiceOption, DiceResult, Game } from "./types";
+import type { ChoiceOption, DiceResult, Game } from "./types";
 
 export interface AwaitingRoll {
   stat: string;
