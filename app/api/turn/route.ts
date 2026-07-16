@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getActivePursuit } from "@/lib/memory";
+import { getFlows, getGoals } from "@/lib/money";
 import { captureError } from "@/lib/log";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
 import { rateLimit } from "@/lib/ratelimit";
@@ -68,7 +69,11 @@ export async function POST(req: Request) {
         // Inline the fresh state so the client renders choices instantly,
         // without waiting on a second /api/state round trip.
         const meta = getMeta(updated);
-        const pursuit = await getActivePursuit(updated.id);
+        const [pursuit, flows, goals] = await Promise.all([
+          getActivePursuit(updated.id),
+          getFlows(updated.id),
+          getGoals(updated.id),
+        ]);
         const payload: InlineState = {
           game: updated,
           awaiting_roll: meta.awaiting_roll ?? null,
@@ -76,6 +81,8 @@ export async function POST(req: Request) {
           next_beat: meta.next_beat ?? null,
           scene_hook: meta.scene_hook ?? null,
           pursuit,
+          flows,
+          goals,
         };
         controller.enqueue(encoder.encode(MARK_STATE + JSON.stringify(payload)));
       } catch (err) {

@@ -2,7 +2,34 @@ import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { sgCalendar } from "./calendar";
-import type { ArcJournal, DiceResult, Game, GameEvent, Npc, Pursuit, Seed } from "./types";
+import type {
+  ArcJournal,
+  DiceResult,
+  Game,
+  GameEvent,
+  MoneyFlow,
+  MoneyGoal,
+  Npc,
+  Pursuit,
+  Seed,
+} from "./types";
+
+// One grounded line per SES tier so the DM always frames money in the life the
+// player was born into — the emotional root of the whole money system.
+function familyFinances(sesTier: string): string {
+  const t = sesTier.toLowerCase();
+  if (t.includes("rental"))
+    return "money is tight — Ma counts coins, every dollar has a job, and asking for extra means guilt";
+  if (t.includes("heartland") || t.includes("working"))
+    return "comfortable but careful — no crises, but no 'just buy it' either; wants get weighed";
+  if (t.includes("upgraded") || t.includes("middle"))
+    return "steady — tuition and a family car, money rarely discussed at dinner, but not infinite";
+  if (t.includes("condo") || t.includes("upper"))
+    return "money is rarely the question — the pressure is to justify it, to not be the spoiled one";
+  if (t.includes("landed") || t.includes("wealthy"))
+    return "money is never the question — proving you're more than your parents' name is";
+  return "an ordinary Singaporean household's money worries";
+}
 
 export const PURSUIT_STAGES = [
   "SPARK",
@@ -49,6 +76,8 @@ export function buildStateBlock(
   sceneHook: string | null = null,
   nextBeat: { label: string; date: string } | null = null,
   lastChoices: { key: string; label: string }[] = [],
+  flows: MoneyFlow[] = [],
+  goals: MoneyGoal[] = [],
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -61,6 +90,32 @@ export function buildStateBlock(
   lines.push(`Mental state: ${game.mental_state}`);
   lines.push(`Pocket money: $${game.money}${game.money < 0 ? " (IN DEBT)" : ""}`);
   lines.push(`Confirm Plus Chop: ${game.confirm_chop ? "AVAILABLE this arc" : "used"}`);
+  lines.push(`FAMILY FINANCES: ${familyFinances(game.ses_tier)}`);
+
+  if (flows.length) {
+    const net = flows.reduce((s, f) => s + (f.monthly || 0), 0);
+    lines.push("");
+    lines.push("MONTHLY LEDGER (accrues automatically as time passes — don't report as one-off money):");
+    for (const f of flows) {
+      const sgn = f.monthly >= 0 ? "+" : "−";
+      lines.push(`- ${f.name} (${f.kind}): ${sgn}$${Math.abs(f.monthly)}/mo`);
+    }
+    lines.push(`  NET: ${net >= 0 ? "+" : "−"}$${Math.abs(net)}/mo`);
+  }
+
+  const activeGoals = goals.filter((g) => g.status === "active");
+  if (activeGoals.length) {
+    lines.push("");
+    lines.push("MONEY GOALS (the reason to hustle):");
+    for (const g of activeGoals) {
+      const overdue = g.deadline && g.deadline < game.ingame_date && g.saved < g.target;
+      const by = g.deadline ? ` by ${g.deadline}` : "";
+      const stk = g.stakes ? ` — if missed: ${g.stakes}` : "";
+      lines.push(
+        `- [${g.source}] ${g.label}: $${g.saved}/$${g.target}${by}${overdue ? " ⚠ OVERDUE — resolve it in a scene" : ""}${stk}`,
+      );
+    }
+  }
   lines.push(`CALENDAR: ${sgCalendar(game.ingame_date, game.age).line}`);
   if (nextBeat) {
     lines.push(`NEXT BEAT: ${nextBeat.label} · ${nextBeat.date}`);

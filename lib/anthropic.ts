@@ -120,7 +120,49 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
       money: {
         type: "integer",
         description:
-          "SGD delta to the player's pocket money — allowance, angbao, part-time pay, fines, spending on treats. Keep amounts age-appropriate and grounded.",
+          "SGD delta for a ONE-OFF event only: angbao, a fine, a big purchase, a windfall, a treat. Do NOT use this for regular salary or bills — those are recurring `ledger` items that accrue automatically as time passes.",
+      },
+      ledger: {
+        type: "array",
+        description:
+          "Recurring income & expenses (see MONEY, HUSTLE & GOALS). Net accrues to the balance automatically as in-game time advances. Use when the fiction supports it: got a job/hustle, a business's monthly changes, parents ask for a monthly contribution, phone/transport bill, quit/closed.",
+        items: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["add", "update", "end"] },
+            kind: {
+              type: "string",
+              enum: ["job", "hustle", "business", "investment", "expense"],
+            },
+            name: { type: "string", description: "e.g. 'Weekend kopitiam job', 'Phone bill'." },
+            monthly: {
+              type: "integer",
+              description: "SGD/month, SIGNED: income positive, expense negative. Ground it in the era.",
+            },
+            note: { type: "string" },
+          },
+          required: ["action", "name"],
+        },
+      },
+      money_goals: {
+        type: "array",
+        description:
+          "Money targets that give hustling a reason. `source: 'world'` = a pressure the world puts on the player (family need, a bill, the Dream's fee) — give it a deadline and stakes. `source: 'self'` = the player's own goal. Use `contribute` to move saved money toward one, `resolve` when it's met/failed/abandoned.",
+        items: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["add", "contribute", "resolve"] },
+            label: { type: "string", description: "e.g. 'Nike Mercurial boots', 'Help Ma with rent'." },
+            target: { type: "integer", description: "SGD needed (for add)." },
+            amount: { type: "integer", description: "SGD to set aside (for contribute)." },
+            deadline: { type: "string", description: "YYYY-MM (world goals)." },
+            source: { type: "string", enum: ["world", "self"] },
+            stakes: { type: "string", description: "What happens if a world goal is missed." },
+            outcome: { type: "string", enum: ["met", "failed", "abandoned"] },
+            note: { type: "string" },
+          },
+          required: ["action", "label"],
+        },
       },
       mental_state: {
         type: "string",

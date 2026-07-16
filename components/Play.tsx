@@ -7,7 +7,7 @@ import { IconClose, IconSend, IconSheet } from "./Icons";
 import { ambianceFor, diffGame, type Choice, type DeltaToast } from "@/lib/ui";
 import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
-import type { DiceResult, Game, GameEvent, Npc, Pursuit } from "@/lib/types";
+import type { DiceResult, Game, GameEvent, MoneyFlow, MoneyGoal, Npc, Pursuit } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 import type { Snapshot } from "./Game";
 
@@ -125,6 +125,8 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     initial.next_beat ?? null,
   );
   const [pursuit, setPursuit] = useState<Pursuit | null>(initial.pursuit ?? null);
+  const [flows, setFlows] = useState<MoneyFlow[]>(initial.flows ?? []);
+  const [goals, setGoals] = useState<MoneyGoal[]>(initial.goals ?? []);
   const [passTimeOpen, setPassTimeOpen] = useState(false);
   const [focusText, setFocusText] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -147,6 +149,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     liveRef.current = live;
   }, [live]);
   const rollGate = useRef(false);
+  const turnGate = useRef(false); // blocks overlapping turn submissions
 
   const refreshState = useCallback(async () => {
     const data = (await fetch("/api/state").then((r) => r.json())) as Snapshot;
@@ -170,6 +173,8 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setSceneHook(data.scene_hook ?? null);
     setNextBeat(data.next_beat ?? null);
     setPursuit(data.pursuit ?? null);
+    setFlows(data.flows ?? []);
+    setGoals(data.goals ?? []);
   }, []);
 
   // Apply the state payload inlined at the end of the turn stream — choices and
@@ -189,10 +194,18 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setNextBeat(s.next_beat ?? null);
     setSceneHook(s.scene_hook ?? null);
     setPursuit(s.pursuit ?? null);
+    setFlows(s.flows ?? []);
+    setGoals(s.goals ?? []);
   }, []);
 
   const streamTurn = useCallback(
     async (body: Record<string, unknown>, playerText?: string) => {
+      // Synchronous double-submit gate. `streaming` is React state and lags a
+      // frame, so two fast Enter/taps could both pass its check and POST twice —
+      // recording the same action twice and making the DM think you repeated
+      // yourself. This ref blocks the second call in the same tick.
+      if (turnGate.current) return;
+      turnGate.current = true;
       setStreaming(true);
       setBookkeeping(false);
       setLive((l) => ({ ...l, player: playerText ?? l.player, dm: "" }));
@@ -288,6 +301,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
         }
         setBookkeeping(false);
         setStreaming(false);
+        turnGate.current = false;
       }
     },
     [refreshState, applyInline],
@@ -681,7 +695,14 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           </button>
         )}
         <div className="rounded-2xl border border-void-700 bg-void-800/50 p-6 shadow-card lg:sticky lg:top-5">
-          <CharacterSheet game={game} npcs={npcs} pursuit={pursuit} onRefresh={refreshState} />
+          <CharacterSheet
+            game={game}
+            npcs={npcs}
+            pursuit={pursuit}
+            flows={flows}
+            goals={goals}
+            onRefresh={refreshState}
+          />
         </div>
       </aside>
     </main>

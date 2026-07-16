@@ -133,6 +133,35 @@ export interface ChoiceOption {
   label: string;
 }
 
+export type FlowKind = "job" | "hustle" | "business" | "investment" | "expense";
+
+export interface MoneyFlow {
+  id: string;
+  game_id: string;
+  created_at: string;
+  updated_at: string;
+  kind: FlowKind;
+  name: string;
+  monthly: number; // signed SGD/month (income +, expense −)
+  status: "active" | "ended";
+  note: string | null;
+}
+
+export interface MoneyGoal {
+  id: string;
+  game_id: string;
+  created_at: string;
+  updated_at: string;
+  label: string;
+  target: number;
+  saved: number;
+  deadline: string | null; // YYYY-MM
+  source: "world" | "self";
+  stakes: string | null;
+  status: "active" | "met" | "failed" | "abandoned";
+  note: string | null;
+}
+
 // The structured delta the DM emits via the `record_turn` tool.
 export interface TurnDelta {
   summary: string;
@@ -163,7 +192,25 @@ export interface TurnDelta {
     system: number;
   }>;
   karma?: number;
-  money?: number; // SGD delta: allowance, angbao, part-time pay, fines, treats
+  money?: number; // SGD delta — ONE-OFF events only (angbao, fine, big purchase, windfall)
+  ledger?: Array<{
+    action: "add" | "update" | "end";
+    kind?: FlowKind;
+    name: string;
+    monthly?: number;
+    note?: string;
+  }>;
+  money_goals?: Array<{
+    action: "add" | "contribute" | "resolve";
+    label: string;
+    target?: number;
+    amount?: number;
+    deadline?: string;
+    source?: "world" | "self";
+    stakes?: string;
+    outcome?: "met" | "failed" | "abandoned";
+    note?: string;
+  }>;
   mental_state?: MentalState;
   npc_changes?: Array<{
     name: string;

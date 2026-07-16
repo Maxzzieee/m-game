@@ -3,7 +3,7 @@
 import { useState } from "react";
 import PixelAvatar from "./PixelAvatar";
 import Shop from "./Shop";
-import type { Game, Npc, Pursuit } from "@/lib/types";
+import type { Game, MoneyFlow, MoneyGoal, Npc, Pursuit } from "@/lib/types";
 
 const PURSUIT_STAGE_NAMES = [
   "Spark",
@@ -83,15 +83,22 @@ export default function CharacterSheet({
   game,
   npcs,
   pursuit,
+  flows = [],
+  goals = [],
   onRefresh,
 }: {
   game: Game;
   npcs: Npc[];
   pursuit?: Pursuit | null;
+  flows?: MoneyFlow[];
+  goals?: MoneyGoal[];
   onRefresh?: () => Promise<void>;
 }) {
   const [shopOpen, setShopOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+
+  const net = flows.reduce((s, f) => s + (f.monthly || 0), 0);
+  const activeGoals = goals.filter((g) => g.status === "active");
 
   return (
     <div className="space-y-7">
@@ -104,7 +111,14 @@ export default function CharacterSheet({
           <p className="mt-0.5 text-sm text-dim">
             Age {game.age} · Arc {game.arc}
           </p>
-          <p className="mt-2 font-mono text-sm text-neon">${game.money}</p>
+          <p className="mt-2 font-mono text-sm">
+            <span className={game.money < 0 ? "text-chili" : "text-neon"}>${game.money}</span>
+            {net !== 0 && (
+              <span className={`ml-2 text-[11px] ${net > 0 ? "text-jade" : "text-chili"}`}>
+                {net > 0 ? "+" : "−"}${Math.abs(net)}/mo
+              </span>
+            )}
+          </p>
           <button
             onClick={() => setShopOpen(true)}
             className="mt-1.5 cursor-pointer rounded-lg border border-void-700 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-dim transition-colors duration-200 hover:border-neon/50 hover:text-neon"
@@ -169,6 +183,57 @@ export default function CharacterSheet({
               Next: {pursuit.next_milestone}
             </p>
           )}
+        </div>
+      )}
+
+      {activeGoals.length > 0 && (
+        <div className="space-y-2.5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">Money goals</p>
+          {activeGoals.map((g) => {
+            const pct = Math.min(100, Math.round((g.saved / Math.max(1, g.target)) * 100));
+            const overdue = g.deadline && g.deadline < game.ingame_date && g.saved < g.target;
+            return (
+              <div key={g.id}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-[13px]">
+                    {g.source === "world" && <span className="text-dim">◆ </span>}
+                    {g.label}
+                  </span>
+                  <span className="shrink-0 font-mono text-[11px] text-dim">
+                    ${g.saved}/${g.target}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-void-700/70">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      overdue ? "bg-chili" : g.source === "world" ? "bg-neon" : "bg-jade"
+                    }`}
+                    style={{ width: `${Math.max(4, pct)}%` }}
+                  />
+                </div>
+                {(g.deadline || overdue) && (
+                  <p className={`mt-0.5 font-mono text-[9px] ${overdue ? "text-chili" : "text-faint"}`}>
+                    {overdue ? "OVERDUE" : `by ${g.deadline}`}
+                    {g.source === "world" && g.stakes ? ` · ${g.stakes}` : ""}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {flows.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">The ledger</p>
+          {flows.map((f) => (
+            <div key={f.id} className="flex items-baseline justify-between gap-2 text-[13px]">
+              <span className="truncate text-parchment/85">{f.name}</span>
+              <span className={`shrink-0 font-mono text-xs ${f.monthly >= 0 ? "text-jade" : "text-chili"}`}>
+                {f.monthly >= 0 ? "+" : "−"}${Math.abs(f.monthly)}/mo
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

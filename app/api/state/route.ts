@@ -1,6 +1,7 @@
 import { requireProfile } from "@/lib/session";
 import { latestGame } from "@/lib/game";
 import { getActiveNpcs, getActivePursuit, getRecentEvents } from "@/lib/memory";
+import { getFlows, getGoals } from "@/lib/money";
 import { getMeta } from "@/lib/turn";
 
 export const runtime = "nodejs";
@@ -14,10 +15,12 @@ export async function GET() {
   const game = await latestGame(auth);
   if (!game) return Response.json({ game: null });
 
-  const [npcs, recent, pursuit] = await Promise.all([
+  const [npcs, recent, pursuit, flows, goals] = await Promise.all([
     getActiveNpcs(game.id),
     getRecentEvents(game.id, 40),
     getActivePursuit(game.id),
+    getFlows(game.id),
+    getGoals(game.id),
   ]);
   const meta = getMeta(game);
 
@@ -31,5 +34,7 @@ export async function GET() {
     scene_hook: meta.scene_hook ?? null,
     next_beat: meta.next_beat ?? null,
     pursuit,
+    flows,
+    goals,
   });
 }

@@ -170,6 +170,42 @@ create table if not exists pursuits (
 create index if not exists pursuits_game_idx on pursuits(game_id);
 
 -- ----------------------------------------------------------------------------
+-- money_flows: recurring income & expenses (signed monthly). Net accrues to
+-- games.money as in-game time advances.
+-- ----------------------------------------------------------------------------
+create table if not exists money_flows (
+  id          uuid primary key default gen_random_uuid(),
+  game_id     uuid not null references games(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  kind        text not null,          -- job | hustle | business | investment | expense
+  name        text not null,
+  monthly     int  not null,          -- SGD/month, signed
+  status      text not null default 'active',
+  note        text
+);
+create index if not exists money_flows_game_idx on money_flows(game_id, status);
+
+-- ----------------------------------------------------------------------------
+-- money_goals: the reason to hustle. World pressures + player aspirations.
+-- ----------------------------------------------------------------------------
+create table if not exists money_goals (
+  id          uuid primary key default gen_random_uuid(),
+  game_id     uuid not null references games(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  label       text not null,
+  target      int  not null,
+  saved       int  not null default 0,
+  deadline    text,
+  source      text not null default 'self',    -- world | self
+  stakes      text,
+  status      text not null default 'active',   -- active | met | failed | abandoned
+  note        text
+);
+create index if not exists money_goals_game_idx on money_goals(game_id, status);
+
+-- ----------------------------------------------------------------------------
 -- keep updated_at fresh
 -- ----------------------------------------------------------------------------
 create or replace function touch_updated_at() returns trigger as $$
@@ -185,4 +221,11 @@ create trigger games_touch before update on games
 
 drop trigger if exists pursuits_touch on pursuits;
 create trigger pursuits_touch before update on pursuits
+  for each row execute function touch_updated_at();
+
+drop trigger if exists money_flows_touch on money_flows;
+create trigger money_flows_touch before update on money_flows
+  for each row execute function touch_updated_at();
+drop trigger if exists money_goals_touch on money_goals;
+create trigger money_goals_touch before update on money_goals
   for each row execute function touch_updated_at();

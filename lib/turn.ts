@@ -17,7 +17,9 @@ import {
   getRecentEvents,
   getRelevantMemories,
 } from "./memory";
+import { getFlows, getGoals } from "./money";
 import { applyDelta, consumeOnFire } from "./state";
+import { accrueIncome, applyFlowOps, applyGoalOps } from "./money";
 import { captureError } from "./log";
 import { rollCheck } from "./dice";
 import { db } from "./supabase";
@@ -193,11 +195,25 @@ export async function runStoryTurn(
   // Record the player's action first (so it's in the recent window if the DM
   // retrieves it). Roll events are recorded by the roll route already.
   if (mode.kind === "action" && mode.action.trim()) {
+    const action = mode.action.trim();
+    // Idempotency: if the last event is the identical player action, this is a
+    // double-submit (fast double-tap, a retry, a second tab). Don't record it
+    // again — otherwise the DM sees it twice and narrates "you already said that".
+    const { data: last } = await db()
+      .from("events")
+      .select("role, prose")
+      .eq("game_id", game.id)
+      .order("turn_no", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (last?.role === "player" && (last.prose as string)?.trim() === action) {
+      return { game }; // silently no-op the duplicate turn
+    }
     const npcsForTags = await getActiveNpcs(game.id);
     await recordEvent(game, {
       role: "player",
-      prose: mode.action.trim(),
-      tags: deriveSearchTags(mode.action, npcsForTags),
+      prose: action,
+      tags: deriveSearchTags(action, npcsForTags),
     });
   } else if (mode.kind === "montage") {
     const spanLabel =
@@ -214,10 +230,12 @@ export async function runStoryTurn(
     getPendingSeeds(game.id),
     getRecentEvents(game.id),
   ]);
-  const [journal, pastCanon, pursuit] = await Promise.all([
+  const [journal, pastCanon, pursuit, flows, goals] = await Promise.all([
     getArcJournal(game.id, game.arc),
     getPastCanon(game.id, game.arc),
     getActivePursuit(game.id),
+    getFlows(game.id),
+    getGoals(game.id),
   ]);
   const karmaCashIn = await maybeKarmaCashIn(game);
   const meta = getMeta(game);
@@ -243,6 +261,8 @@ export async function runStoryTurn(
     meta.next_beat ?? null,
     // The menu the player just answered — the DM must not re-offer it.
     mode.kind === "action" ? (meta.choices ?? []) : [],
+    flows,
+    goals,
   );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
@@ -272,7 +292,16 @@ export async function runStoryTurn(
 
   // Apply the structured delta to the authoritative ledger.
   const closingArc = game.arc;
+  const oldDate = game.ingame_date;
   const updated = await applyDelta(game, delta);
+
+  // Money system: apply recurring-flow ops first (so a job started "this
+  // montage" counts), accrue net income for the months elapsed, then apply
+  // goal ops (contributions draw from the freshly-accrued balance).
+  if (delta.ledger?.length) await applyFlowOps(updated.id, updated.arc, delta.ledger);
+  updated.money = await accrueIncome(updated.id, oldDate, updated.ingame_date, updated.money);
+  if (delta.money_goals?.length)
+    updated.money = await applyGoalOps(updated.id, updated.money, delta.money_goals);
 
   // Stash awaiting-roll + structured choices (both sanitized — model output is
   // never stored raw); clear consumed roll, world notes, and (on nudge) the hook.

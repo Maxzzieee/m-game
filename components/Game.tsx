@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import Gate from "./Gate";
 import Creation from "./Creation";
 import Play from "./Play";
-import type { ChoiceOption, Game as GameT, GameEvent, Npc, Pursuit } from "@/lib/types";
+import type {
+  ChoiceOption,
+  Game as GameT,
+  GameEvent,
+  MoneyFlow,
+  MoneyGoal,
+  Npc,
+  Pursuit,
+} from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 
 export interface Snapshot {
@@ -17,6 +25,8 @@ export interface Snapshot {
   scene_hook?: string | null;
   next_beat?: { label: string; date: string } | null;
   pursuit?: Pursuit | null;
+  flows?: MoneyFlow[];
+  goals?: MoneyGoal[];
 }
 
 type Phase = "loading" | "gate" | "creation" | "play";
