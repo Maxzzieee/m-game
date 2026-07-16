@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CharacterSheet from "./CharacterSheet";
 import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
 import { IconClose, IconSend, IconSheet } from "./Icons";
-import { ambianceFor, diffGame, parseChoices, type Choice, type DeltaToast } from "@/lib/ui";
+import { ambianceFor, diffGame, type Choice, type DeltaToast } from "@/lib/ui";
 import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
 import type { DiceResult, Game, GameEvent, Npc, Pursuit } from "@/lib/types";
@@ -391,16 +391,11 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
 
   const busy = streaming || rolling;
 
-  // Structured choices from the DM's tool call; regex fallback for old saves.
+  // Choices come only from the DM's structured tool output. (The old regex
+  // prose-scraper is gone: it could only ever resurface stale options.)
   const lastDm = [...events].reverse().find((e) => e.role === "dm");
   const choices: Choice[] =
-    busy || awaiting
-      ? []
-      : Array.isArray(structuredChoices) && structuredChoices.length
-        ? structuredChoices
-        : lastDm
-          ? parseChoices(lastDm.prose)
-          : [];
+    busy || awaiting || !Array.isArray(structuredChoices) ? [] : structuredChoices;
 
   // Scene ambiance: tags first, then the calendar's season/festival tint.
   const ambiance =

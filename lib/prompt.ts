@@ -48,6 +48,7 @@ export function buildStateBlock(
   pursuit: Pursuit | null = null,
   sceneHook: string | null = null,
   nextBeat: { label: string; date: string } | null = null,
+  lastChoices: { key: string; label: string }[] = [],
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -111,6 +112,16 @@ export function buildStateBlock(
     lines.push("");
     lines.push("OFFSCREEN, since the last session (weave in as lived reality, never a bulletin):");
     for (const n of worldNotes) lines.push(`- ${n}`);
+  }
+
+  if (lastChoices.length) {
+    lines.push("");
+    lines.push(
+      "LAST TURN'S MENU — the player has now acted. The scene has MOVED. Do NOT re-offer " +
+        "these or their equivalents; if you find yourself writing the same options again, the " +
+        "scene is stalling — cut forward in time or place instead:",
+    );
+    for (const c of lastChoices) lines.push(`- ${c.label}`);
   }
 
   if (sceneHook) {

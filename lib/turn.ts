@@ -224,6 +224,8 @@ export async function runStoryTurn(
     pursuit,
     sceneHook,
     meta.next_beat ?? null,
+    // The menu the player just answered — the DM must not re-offer it.
+    mode.kind === "action" ? (meta.choices ?? []) : [],
   );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
