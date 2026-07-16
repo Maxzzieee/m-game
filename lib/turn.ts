@@ -99,10 +99,14 @@ function sanitizeAwaitingRoll(raw: unknown): AwaitingRoll | null {
   };
 }
 
-export async function setMeta(gameId: string, patch: GameMeta): Promise<void> {
+// Returns the merged meta so callers can keep their in-memory game object in
+// sync — critical for the inline-state payload, which must reflect THIS turn's
+// choices/awaiting_roll, not the stale copy applyDelta re-selected beforehand.
+export async function setMeta(gameId: string, patch: GameMeta): Promise<GameMeta> {
   const { data } = await db().from("games").select("meta").eq("id", gameId).single();
   const meta = { ...(data?.meta ?? {}), ...patch };
   await db().from("games").update({ meta }).eq("id", gameId);
+  return meta;
 }
 
 // Insert one event, advancing the per-event sequence (games.turn_no).
@@ -274,7 +278,10 @@ export async function runStoryTurn(
   // never stored raw); clear consumed roll, world notes, and (on nudge) the hook.
   const awaitingRoll = sanitizeAwaitingRoll(delta.awaiting_roll);
   const newBeat = sanitizeBeat(delta.next_beat, updated.ingame_date);
-  await setMeta(updated.id, {
+  // Assign the merged meta back onto `updated` — applyDelta re-selected the row
+  // BEFORE this write, so without this the inline payload would ship the
+  // previous turn's choices alongside this turn's prose.
+  updated.meta = await setMeta(updated.id, {
     awaiting_roll: awaitingRoll,
     choices: awaitingRoll ? null : sanitizeChoices(delta.choices),
     last_roll: null,
@@ -288,7 +295,7 @@ export async function runStoryTurn(
     ...(mode.kind === "nudge" ? { scene_hook: null } : {}),
     // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
     ...(delta.advance ? { pending_stat_boost: true } : {}),
-  });
+  }) as Record<string, unknown>;
 
   // Bookkeeping past this point is best-effort: the scene is already saved, so
   // a summariser hiccup must never surface as "the DM stumbled" on a turn that
