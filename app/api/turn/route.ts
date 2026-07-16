@@ -3,6 +3,7 @@ import { latestGame } from "@/lib/game";
 import { getActivePursuit } from "@/lib/memory";
 import { captureError } from "@/lib/log";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
+import { rateLimit } from "@/lib/ratelimit";
 import { getMeta, runStoryTurn } from "@/lib/turn";
 
 export const runtime = "nodejs";
@@ -17,9 +18,17 @@ export async function POST(req: Request) {
   const auth = await requireProfile();
   if (auth instanceof Response) return auth;
 
+  // Guard the API budget against a stuck client retry-looping.
+  const wait = rateLimit(`turn:${auth}`);
+  if (wait !== null) {
+    return Response.json(
+      { error: `slow down lah — try again in ${wait}s` },
+      { status: 429, headers: { "retry-after": String(wait) } },
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const mode = body.mode as "start" | "action" | "resolve" | "nudge" | "montage";
-  const big = !!body.big;
 
   const game = await latestGame(auth);
   if (!game) return Response.json({ error: "no game" }, { status: 400 });
@@ -52,7 +61,6 @@ export async function POST(req: Request) {
     async start(controller) {
       try {
         const { game: updated } = await runStoryTurn(game, modeArg, {
-          big: big || game.dm_model_pref === "big",
           onText: (chunk) => controller.enqueue(encoder.encode(chunk)),
           // Prose done, tool call generating — let the UI show skeletons.
           onToolStart: () => controller.enqueue(encoder.encode(MARK_BOOKKEEPING)),

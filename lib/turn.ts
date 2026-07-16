@@ -116,7 +116,19 @@ async function recordEvent(
     tags?: string[];
   },
 ): Promise<number> {
-  const seq = game.turn_no + 1;
+  // Atomic sequence: the DB increments and returns in one statement. (This used
+  // to be read-modify-write in JS, which two concurrent writers could collide on
+  // and overwrite an event.) Falls back to the old path if migration 007 hasn't
+  // been applied yet.
+  let seq: number;
+  const { data: rpc, error: rpcErr } = await db().rpc("next_turn", { p_game_id: game.id });
+  if (!rpcErr && typeof rpc === "number") {
+    seq = rpc;
+  } else {
+    seq = game.turn_no + 1;
+    await db().from("games").update({ turn_no: seq }).eq("id", game.id);
+  }
+
   await db().from("events").insert({
     game_id: game.id,
     turn_no: seq,
@@ -127,7 +139,6 @@ async function recordEvent(
     dice: ev.dice ?? null,
     tags: ev.tags ?? [],
   });
-  await db().from("games").update({ turn_no: seq }).eq("id", game.id);
   game.turn_no = seq; // keep local copy in sync
   return seq;
 }
@@ -171,7 +182,6 @@ export async function runStoryTurn(
   game: Game,
   mode: Mode,
   opts: {
-    big?: boolean;
     onText?: (c: string) => void;
     onToolStart?: () => void;
   } = {},
@@ -244,7 +254,6 @@ export async function runStoryTurn(
   });
 
   const { text, delta } = await runDmTurn(userMessage, {
-    useBig: opts.big,
     onText: opts.onText,
     onToolStart: opts.onToolStart,
   });

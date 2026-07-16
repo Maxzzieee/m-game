@@ -51,17 +51,25 @@ and noticing. That's now fixed at the system level.
   clamping, stat budgets, tier coverage, calendar across 2016–2033, sanitizer strictness.
   `npm run check` = typecheck + test + build.
 
-## ⚠️ Known debt (accepted, not yet fixed)
+## ✅ Debt cleared (second pass)
+
+| Was | Now |
+|---|---|
+| **No DB backups** (save wipe unrecoverable) | **Export life → JSON** and **Import life** buttons; verified round-trip (77 turns, 8 NPCs, dream all survive). "New life" now **archives** (recoverable) instead of hard-deleting. |
+| Manual migrations, no tracking | `schema_migrations` table (migration 007); `/api/health` names exactly which migrations are missing. |
+| `turn_no` read-modify-write race | Atomic `next_turn()` Postgres RPC (migration 007), with a safe fallback if unapplied. |
+| No rate limiting | `/api/turn` capped (~12/min per profile) — catches a stuck retry-loop burning API budget. |
+| Dead BIG BEAT plumbing | Removed (`dm_model_pref`, `MODELS.dmBig`, `useBig`). |
+
+## ⚠️ Remaining debt (accepted)
 
 | Item | Risk | Note |
 |---|---|---|
-| **No DB backups** | **High** | The save wipe was unrecoverable. Supabase PITR is paid; a nightly `pg_dump` or an in-app "export life to JSON" would cover it. |
-| Manual migrations | Medium | 6 SQL files run by hand, no `schema_migrations` table. `/api/health` now detects drift, but applying is still manual. |
-| Read-modify-write races | Low | `setMeta` and `recordEvent` (`turn_no + 1`) aren't atomic. Harmless single-player (turns are sequential); would need a Postgres RPC if ever concurrent. |
-| No rate limiting | Low | Anyone with the passcode can burn API budget. Fine for 2 trusted players. |
-| Dead plumbing | Low | `dm_model_pref` / `MODELS.dmBig` / `useBig` kept deliberately as a one-line revive path for the removed BIG BEAT. `parseChoices` now test-only. |
+| Backups are manual | Low | Export is one click but user-initiated. A scheduled reminder or auto-export-on-arc could make it passive. |
+| Rate limit is per-instance | Low | In-memory, so it resets on cold start and isn't shared across serverless instances. Fine for catching loops; not adversarial-grade. |
+| `parseChoices` | Low | Now test-only (kept as a documented guard). |
 | Local transcript ids | Low | Optimistic append uses `local-*` ids until the next full fetch. Cosmetic. |
-| 60s function limit | Low | A very long Opus turn could clip. Sonnet-only makes this unlikely. |
+| 60s function limit | Low | Sonnet-only makes a clip unlikely. |
 
 ## 🔮 If something breaks, do this
 

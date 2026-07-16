@@ -14,14 +14,13 @@ export interface DmResult {
 export async function runDmTurn(
   userMessage: string,
   opts: {
-    useBig?: boolean;
     onText?: (chunk: string) => void;
     // Fires when the prose is done and the record_turn tool call starts
     // generating — lets the UI show a "bookkeeping" state instead of dead air.
     onToolStart?: () => void;
   },
 ): Promise<DmResult> {
-  const model = opts.useBig ? MODELS.dmBig : MODELS.dm;
+  const model = MODELS.dm;
 
   const stream = anthropic().messages.stream({
     model,

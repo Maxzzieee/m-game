@@ -45,7 +45,6 @@ export interface Game {
   confirm_chop: boolean;
   heng: number; // reroll tokens (+1 per arc, cap 3)
 
-  dm_model_pref: "standard" | "big";
   turn_no: number;
   meta: Record<string, unknown>;
 }

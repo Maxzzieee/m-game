@@ -91,6 +91,7 @@ export default function CharacterSheet({
   onRefresh?: () => Promise<void>;
 }) {
   const [shopOpen, setShopOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   return (
     <div className="space-y-7">
@@ -209,11 +210,46 @@ export default function CharacterSheet({
       </p>
 
       <div className="grid grid-cols-2 gap-2">
+        <a
+          href="/api/export"
+          download
+          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-jade/50 hover:text-jade"
+          title="Download this whole life as a JSON file"
+        >
+          Export life
+        </a>
+        <label
+          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-jade/50 hover:text-jade"
+          title="Restore a life from an exported file"
+        >
+          {importing ? "Restoring…" : "Import life"}
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (!window.confirm("Restore this file? Your current life gets archived first.")) {
+                e.target.value = "";
+                return;
+              }
+              setImporting(true);
+              const res = await fetch("/api/import", { method: "POST", body: await file.text() });
+              setImporting(false);
+              if (res.ok) window.location.reload();
+              else {
+                const { error } = await res.json().catch(() => ({ error: "import failed" }));
+                window.alert(error);
+              }
+            }}
+          />
+        </label>
         <button
           onClick={async () => {
             if (
               !window.confirm(
-                `Start a new life? This deletes the current save — everything ${game.char_name} lived through, gone. Cannot undo.`,
+                `Start a new life? ${game.char_name}'s story gets archived (recoverable), and you begin again at 13.`,
               )
             )
               return;
