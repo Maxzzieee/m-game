@@ -60,10 +60,10 @@ const TOAST_TONE: Record<DeltaToast["tone"], string> = {
 };
 
 const GROWTH_STATS = [
-  { key: "brains", label: "Brains", color: "#29708f", blurb: "The mugging finally compounds." },
-  { key: "face", label: "Face", color: "#a84a78", blurb: "You learned how to be liked." },
-  { key: "brawn", label: "Brawn", color: "#a64f24", blurb: "The body caught up." },
-  { key: "guts", label: "Guts", color: "#93600d", blurb: "Fear got smaller." },
+  { key: "brains", label: "Brains", color: "#1f6feb", blurb: "The mugging finally compounds." },
+  { key: "face", label: "Face", color: "#b83280", blurb: "You learned how to be liked." },
+  { key: "brawn", label: "Brawn", color: "#c2410c", blurb: "The body caught up." },
+  { key: "guts", label: "Guts", color: "#c8102e", blurb: "Fear got smaller." },
 ] as const;
 
 // Arc-transition ceremony: the years changed you. Pick how.

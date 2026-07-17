@@ -5,12 +5,12 @@ import type { Game } from "./types";
 
 // ---- stat colour language ----------------------------------------------------
 export const STAT_COLOR: Record<string, string> = {
-  BRAINS: "#29708f",
-  FACE: "#a84a78",
-  BRAWN: "#a64f24",
-  GUTS: "#93600d",
+  BRAINS: "#1f6feb",
+  FACE: "#b83280",
+  BRAWN: "#c2410c",
+  GUTS: "#c8102e",
 };
-export const statColor = (stat: string) => STAT_COLOR[stat.toUpperCase()] ?? "#93600d";
+export const statColor = (stat: string) => STAT_COLOR[stat.toUpperCase()] ?? "#ce1126";
 
 // ---- scene ambiance ----------------------------------------------------------
 // Tint the room to match the scene. Derived from the latest DM event's tags +
@@ -21,14 +21,14 @@ const AMBIANCE: Array<{ match: string[]; color: string }> = [
   { match: ["ns", "tekong", "camp", "ippt"], color: "rgba(88, 122, 66, 0.13)" },
   { match: ["exam", "school", "class", "study"], color: "rgba(64, 130, 168, 0.10)" },
   { match: ["night", "void deck", "supper", "mrt"], color: "rgba(70, 92, 138, 0.13)" },
-  { match: ["family", "home", "cny"], color: "rgba(220, 150, 46, 0.14)" },
+  { match: ["family", "home", "cny"], color: "rgba(206, 17, 38, 0.11)" },
 ];
 
 // Tag-derived scene tint; null when no tag matches (so the calendar layer can
 // take over). Mental-state extremes still override the calendar.
 export function ambianceFor(tags: string[] | undefined, game: Game): string | null {
-  if (game.mental_state === "Burnt Out") return "rgba(191, 64, 40, 0.07)";
-  if (game.mental_state === "On Fire") return "rgba(220, 150, 46, 0.16)";
+  if (game.mental_state === "Burnt Out") return "rgba(163, 18, 43, 0.07)";
+  if (game.mental_state === "On Fire") return "rgba(206, 17, 38, 0.13)";
   const lower = (tags ?? []).map((t) => t.toLowerCase());
   for (const a of AMBIANCE) {
     if (a.match.some((m) => lower.some((t) => t.includes(m)))) return a.color;

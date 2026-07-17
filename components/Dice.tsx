@@ -235,14 +235,14 @@ export function RollOverlay({
   }, [dice]);
 
   const outcomeColor = !dice
-    ? "#33291d"
+    ? "#1a1a1a"
     : dice.outcome === "nat20"
-      ? "#93600d"
+      ? "#ce1126" // legendary — Singapore red
       : dice.outcome === "nat1"
-        ? "#bf4028"
+        ? "#7a0f1f" // catastrophe — deep blood
         : dice.outcome === "success"
-          ? "#2a6e50"
-          : "#75674f";
+          ? "#1f7a44"
+          : "#5c5c5c";
 
   const label = !dice
     ? ""
@@ -267,7 +267,7 @@ export function RollOverlay({
           <IconD20 className="absolute inset-0 h-full w-full" />
           <span
             className="relative font-mono text-5xl font-medium"
-            style={{ color: settled ? outcomeColor : "#33291d" }}
+            style={{ color: settled ? outcomeColor : "#1a1a1a" }}
           >
             {display}
           </span>

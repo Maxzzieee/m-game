@@ -18,15 +18,15 @@ const PURSUIT_STAGE_NAMES = [
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
 const STAT_BAR: Record<string, string> = {
-  Brains: "#29708f",
-  Face: "#a84a78",
-  Brawn: "#a64f24",
-  Guts: "#93600d",
+  Brains: "#1f6feb",
+  Face: "#b83280",
+  Brawn: "#c2410c",
+  Guts: "#c8102e",
 };
 
 function Stat({ label, n }: { label: string; n: number }) {
   const pct = ((n + 1) / 6) * 100; // -1..5
-  const c = STAT_BAR[label] ?? "#f0a63e";
+  const c = STAT_BAR[label] ?? "#ce1126";
   return (
     <div>
       <div className="flex items-baseline justify-between">

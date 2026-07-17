@@ -152,7 +152,7 @@ export default function PixelAvatar({ game, size = 120 }: { game: Game; size?: n
       shapeRendering="crispEdges"
       role="img"
       aria-label={`Pixel avatar of ${game.char_name}`}
-      className={onFire ? "drop-shadow-[0_0_10px_rgba(220,150,46,0.7)]" : undefined}
+      className={onFire ? "drop-shadow-[0_0_10px_rgba(206,17,38,0.7)]" : undefined}
     >
       {px.map(([x, y, c], i) => (
         <rect key={i} x={x} y={y} width={1} height={1} fill={c} />

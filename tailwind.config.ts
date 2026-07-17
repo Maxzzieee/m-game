@@ -11,36 +11,37 @@ const config: Config = {
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
-        // "Kopitiam morning" palette — warm cream paper, coffee ink, deep gold.
-        // Token names kept from the dark theme so components didn't change:
+        // "Majulah" palette — Singapore red & white. Crisp white paper, near-black
+        // ink, deep flag red as the hero accent (accessible: 5.4:1 text /
+        // 5.6:1 white-on-red). Token names kept so components didn't change:
         //   void-900 = page, void-800 = raised surface, void-700 = borders/wells,
-        //   parchment = primary text, dim/faint = muted text.
-        ink: "#fdfaf2", // text on gold fills (5.1:1 on neon)
+        //   parchment = primary text, dim/faint = muted text, neon = accent.
+        ink: "#ffffff", // text on red fills
         void: {
-          900: "#f5efe3", // page — warm cream
-          800: "#fdfaf2", // surface — raised paper
-          700: "#e3d8c2", // borders / wells
+          900: "#f6f5f3", // page — soft paper white
+          800: "#ffffff", // surface — raised white
+          700: "#e5e3df", // borders / wells
         },
-        parchment: "#33291d", // primary text (12.4:1 on cream)
-        dim: "#75674f", // muted text (4.8:1 on cream)
-        faint: "#a3947a", // decorative-only text
-        neon: "#93600d", // kopi gold (4.7:1 as text on cream)
-        chili: "#bf4028",
-        jade: "#2a6e50",
-        // stat colour language — deepened for light backgrounds
+        parchment: "#1a1a1a", // primary text (16.7:1)
+        dim: "#5c5c5c", // muted text (6.4:1)
+        faint: "#8a8a8a", // decorative-only text
+        neon: "#ce1126", // Singapore red — the hero accent
+        chili: "#a3122b", // negative / error (deep crimson)
+        jade: "#1f7a44", // positive / income (forest green)
+        // stat colour language — GUTS in national red ties into the theme
         stat: {
-          brains: "#29708f",
-          face: "#a84a78",
-          brawn: "#a64f24",
-          guts: "#93600d",
+          brains: "#1f6feb",
+          face: "#b83280",
+          brawn: "#c2410c",
+          guts: "#c8102e",
         },
       },
       maxWidth: {
         prose: "68ch",
       },
       boxShadow: {
-        glow: "0 0 22px -6px rgba(168, 111, 16, 0.45)",
-        card: "0 1px 2px rgba(70, 52, 22, 0.06), 0 10px 28px -18px rgba(70, 52, 22, 0.35)",
+        glow: "0 0 22px -7px rgba(206, 17, 38, 0.45)",
+        card: "0 1px 2px rgba(20, 20, 20, 0.05), 0 10px 28px -18px rgba(20, 20, 20, 0.22)",
       },
     },
   },

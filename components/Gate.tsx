@@ -26,6 +26,30 @@ export default function Gate({ onAuthed }: { onAuthed: () => void }) {
     <main className="grid min-h-screen place-items-center px-6">
       <form onSubmit={submit} className="w-full max-w-sm animate-fadeup">
         <div className="mb-10 text-center">
+          {/* stylised crescent + five stars — a national flourish, not the state emblem */}
+          <svg
+            viewBox="0 0 120 40"
+            className="mx-auto mb-5 h-9 w-auto text-neon"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M28 20a14 14 0 1 1-8.5-12.9A11 11 0 1 0 19.5 32.9 14 14 0 0 1 28 20z" />
+            <g>
+              {[
+                [48, 12],
+                [63, 12],
+                [55.5, 22],
+                [51, 30],
+                [60, 30],
+              ].map(([cx, cy], i) => (
+                <path
+                  key={i}
+                  transform={`translate(${cx} ${cy}) scale(0.85)`}
+                  d="M0 -5 L1.18 -1.6 L4.76 -1.55 L1.9 0.6 L2.94 4.05 L0 2 L-2.94 4.05 L-1.9 0.6 L-4.76 -1.55 L-1.18 -1.6 Z"
+                />
+              ))}
+            </g>
+          </svg>
           <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-dim">
             est. 2016 · block 247
           </p>

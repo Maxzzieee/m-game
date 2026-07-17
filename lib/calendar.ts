@@ -100,8 +100,8 @@ export function calendarAmbiance(ingameDate: string): string | null {
   if (!m) return null;
   const month = parseInt(m[1], 10);
   if (month === 11 || month === 12) return "rgba(70, 92, 138, 0.10)"; // monsoon blue
-  if (month === 1 || month === 2) return "rgba(191, 64, 40, 0.08)"; // CNY red
-  if (month === 8) return "rgba(191, 64, 40, 0.06)"; // NDP
+  if (month === 1 || month === 2) return "rgba(206, 17, 38, 0.09)"; // CNY red
+  if (month === 8) return "rgba(206, 17, 38, 0.11)"; // National Day — proud red
   if (month >= 8 && month <= 10) return "rgba(160, 140, 90, 0.10)"; // haze
   return null;
 }
