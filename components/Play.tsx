@@ -149,6 +149,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     liveRef.current = live;
   }, [live]);
   const rollGate = useRef(false);
+  const acceptGate = useRef(false); // blocks double accept -> duplicate resolve turn
   const turnGate = useRef(false); // blocks overlapping turn submissions
 
   const refreshState = useCallback(async () => {
@@ -343,12 +344,17 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     );
   }
 
+  const isWin = (o: DiceResult["outcome"]) => o === "success" || o === "nat20";
+
   // Accept the settled roll: close the overlay and stream the consequence.
   async function acceptRoll(dice: DiceResult) {
+    if (acceptGate.current) return;
+    acceptGate.current = true;
     setOverlay({ open: false, dice: null, canReroll: false });
     setLive((l) => ({ ...l, dice }));
     setRolling(false);
     await streamTurn({ mode: "resolve" });
+    acceptGate.current = false;
   }
 
   // Abort a stuck/failed roll: close the overlay and resync with the server.
@@ -356,6 +362,21 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     setOverlay({ open: false, dice: null, canReroll: false });
     setRolling(false);
     await refreshState();
+  }
+
+  // Settle a landed roll into the overlay. A WIN locks in and auto-accepts —
+  // there is no button to click into a worse result. A failure offers the
+  // heng reroll (only if tokens remain and only once).
+  async function settleRoll(dice: DiceResult, quick: boolean) {
+    await sleep(quick ? 350 : 650);
+    if (isWin(dice.outcome)) {
+      setOverlay({ open: true, dice, canReroll: false }); // no reroll on a win
+      await sleep(1100); // let the win land, then lock it in automatically
+      await acceptRoll(dice);
+    } else {
+      // Failure: let the player accept it or spend heng to reroll (once).
+      setOverlay({ open: true, dice, canReroll: game.heng > 0 });
+    }
   }
 
   // manual = physical dice the player rolled IRL ([n] or [n, n] for adv/dis)
@@ -372,14 +393,11 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
       });
       const data = (await res.json().catch(() => ({}))) as { dice?: DiceResult };
       if (!res.ok || !data.dice) {
-        // e.g. double-fire consumed the pending roll — never churn forever
         await cancelRoll();
         return;
       }
       setAwaiting(null);
-      await sleep(manual?.length ? 350 : 650); // real dice already had their drama
-      // Settle into a decision: accept, or (once, if heng remains) reroll.
-      setOverlay({ open: true, dice: data.dice, canReroll: game.heng > 0 });
+      await settleRoll(data.dice, !!manual?.length);
     } catch {
       await cancelRoll();
     } finally {
@@ -387,20 +405,50 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
     }
   }
 
-  // Burn a heng token: reroll the same check; the second roll stands.
+  // Burn a heng token: reroll the same check. The second roll stands — but if it
+  // WINS, it locks in (no clicking into a worse result). Gated so a laggy
+  // connection + mashing can't fire multiple rerolls and burn extra tokens.
   async function rerollHeng(manual?: number[]) {
-    const res = await fetch("/api/reroll", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(manual?.length ? { manual } : {}),
-    });
-    if (!res.ok) return;
-    const data = (await res.json().catch(() => ({}))) as { dice?: DiceResult };
-    if (!data.dice) return;
-    setGame((g) => ({ ...g, heng: Math.max(0, g.heng - 1) }));
+    if (rollGate.current) return;
+    rollGate.current = true;
+    setOverlay((o) => ({ ...o, canReroll: false })); // hide the button instantly
+    setRolling(true);
     setOverlay({ open: true, dice: null, canReroll: false });
-    await sleep(manual?.length ? 350 : 650);
-    setOverlay({ open: true, dice: data.dice, canReroll: false }); // no chaining
+    try {
+      const res = await fetch("/api/reroll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(manual?.length ? { manual } : {}),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        dice?: DiceResult;
+        heng?: number;
+      };
+      if (!res.ok || !data.dice) {
+        await cancelRoll();
+        return;
+      }
+      // Trust the server's post-state heng: it's unchanged if the reroll was
+      // refused for an already-won roll, decremented on a real reroll.
+      setGame((g) => ({ ...g, heng: data.heng ?? Math.max(0, g.heng - 1) }));
+      // A reroll never offers another reroll (one per check) — settleRoll will
+      // auto-accept a win and only let a failure be accepted.
+      await settleRollNoReroll(data.dice, !!manual?.length);
+    } catch {
+      await cancelRoll();
+    } finally {
+      rollGate.current = false;
+    }
+  }
+
+  // Like settleRoll but never offers a further reroll (heng is one-shot).
+  async function settleRollNoReroll(dice: DiceResult, quick: boolean) {
+    await sleep(quick ? 350 : 650);
+    setOverlay({ open: true, dice, canReroll: false });
+    if (isWin(dice.outcome)) {
+      await sleep(1100);
+      await acceptRoll(dice);
+    }
   }
 
   const busy = streaming || rolling;

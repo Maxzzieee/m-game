@@ -19,6 +19,12 @@ export async function POST(req: Request) {
   const meta = getMeta(game);
   const prev = meta.last_roll;
   if (!prev) return Response.json({ error: "nothing to reroll" }, { status: 400 });
+  // Never let a heng be spent to reroll a roll that already WON. This is the
+  // server-side backstop for the client rule "a win locks in" — it stops a
+  // lagged/duplicate reroll request from clobbering a success into a failure.
+  if (prev.outcome === "success" || prev.outcome === "nat20") {
+    return Response.json({ dice: prev, heng: game.heng ?? 0, alreadyWon: true });
+  }
   if ((game.heng ?? 0) < 1) return Response.json({ error: "no heng left" }, { status: 400 });
 
   // Physical-dice rerolls: same validation as /api/roll.
