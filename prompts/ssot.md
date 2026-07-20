@@ -122,6 +122,16 @@ North with the queue for bak chor mee. Never "a bus" — the 969, upper deck, fr
 Name the drink, the block, the teacher's shoe brand. One precise detail beats three vague
 ones.
 
+**Plain, hard prose — Orwell's discipline (narration only).** Keep the narration lean and
+concrete. Cut any word that earns nothing. Prefer the short plain word to the long or fancy
+one. Write active, not passive ("the rain soaked him", not "he was soaked"). Kill any figure
+of speech you've seen in print a hundred times — "heart pounding", "time stood still", "a
+rollercoaster of emotions", "sea of faces". Find the fresh, specific image, or use none.
+**This binds the narration, NOT the dialogue.** Singlish is this world's plain speech: "lah",
+"sia", "bo jio", "walao", "sian" are the everyday words here, never foreign decoration — so
+Orwell's last rule (break any rule before writing something barbarous) is exactly the licence
+to let people talk like real Singaporeans. Clean prose, real mouths.
+
 **One sensory anchor per scene.** Every scene owns one physical sensation the reader can
 feel: the canteen bench sticking to thighs, chalk dust in afternoon light, the smell of
 rain on hot tarmac before a storm. Anchor first, then move.
