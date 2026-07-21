@@ -3,6 +3,7 @@
 import { useState } from "react";
 import PixelAvatar from "./PixelAvatar";
 import Shop from "./Shop";
+import LivesSwitcher from "./LivesSwitcher";
 import type { Game, MoneyFlow, MoneyGoal, Npc, Pursuit } from "@/lib/types";
 
 const PURSUIT_STAGE_NAMES = [
@@ -86,6 +87,7 @@ export default function CharacterSheet({
   flows = [],
   goals = [],
   onRefresh,
+  onNewLife,
 }: {
   game: Game;
   npcs: Npc[];
@@ -93,8 +95,10 @@ export default function CharacterSheet({
   flows?: MoneyFlow[];
   goals?: MoneyGoal[];
   onRefresh?: () => Promise<void>;
+  onNewLife?: () => void;
 }) {
   const [shopOpen, setShopOpen] = useState(false);
+  const [livesOpen, setLivesOpen] = useState(false);
   const [importing, setImporting] = useState(false);
 
   const net = flows.reduce((s, f) => s + (f.monthly || 0), 0);
@@ -311,19 +315,10 @@ export default function CharacterSheet({
           />
         </label>
         <button
-          onClick={async () => {
-            if (
-              !window.confirm(
-                `Start a new life? ${game.char_name}'s story gets archived (recoverable), and you begin again at 13.`,
-              )
-            )
-              return;
-            await fetch("/api/reset", { method: "POST" });
-            window.location.reload();
-          }}
-          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-chili/50 hover:text-chili"
+          onClick={() => setLivesOpen(true)}
+          className="cursor-pointer rounded-lg border border-void-700 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-faint transition-colors duration-200 hover:border-neon/50 hover:text-neon"
         >
-          New life
+          Lives
         </button>
         <button
           onClick={async () => {
@@ -342,6 +337,16 @@ export default function CharacterSheet({
           onClose={() => setShopOpen(false)}
           onBought={async () => {
             await onRefresh?.();
+          }}
+        />
+      )}
+
+      {livesOpen && (
+        <LivesSwitcher
+          onClose={() => setLivesOpen(false)}
+          onNewLife={() => {
+            setLivesOpen(false);
+            onNewLife?.();
           }}
         />
       )}

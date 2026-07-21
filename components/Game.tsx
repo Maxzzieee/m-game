@@ -35,6 +35,7 @@ type Phase = "loading" | "gate" | "creation" | "play";
 export default function Game() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [creating, setCreating] = useState(false); // "new life" without archiving
 
   const loadState = useCallback(async () => {
     const res = await fetch("/api/state");
@@ -61,7 +62,18 @@ export default function Game() {
   }, [loadState]);
 
   let content: React.ReactNode = null;
-  if (phase === "loading") {
+  if (creating) {
+    // Non-destructive "new life": create another game while the existing ones
+    // stay put (the newest becomes active). onCreated drops back into play.
+    content = (
+      <Creation
+        onCreated={() => {
+          setCreating(false);
+          void loadState();
+        }}
+      />
+    );
+  } else if (phase === "loading") {
     content = (
       <main className="grid min-h-screen place-items-center">
         <div className="animate-pulse font-mono text-xs uppercase tracking-[0.35em] text-dim">
@@ -74,7 +86,7 @@ export default function Game() {
   } else if (phase === "creation") {
     content = <Creation onCreated={loadState} />;
   } else if (phase === "play" && snap?.game) {
-    content = <Play initial={snap} reload={loadState} />;
+    content = <Play initial={snap} reload={loadState} onNewLife={() => setCreating(true)} />;
   }
 
   // WorkMode is a fixed-position overlay + skin toggle; it sits above whatever

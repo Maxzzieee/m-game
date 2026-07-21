@@ -109,7 +109,14 @@ function GrowthModal({ game, onPicked }: { game: Game; onPicked: () => Promise<v
   );
 }
 
-export default function Play({ initial }: { initial: Snapshot; reload: () => void }) {
+export default function Play({
+  initial,
+  onNewLife,
+}: {
+  initial: Snapshot;
+  reload: () => void;
+  onNewLife?: () => void;
+}) {
   const [game, setGame] = useState<Game>(initial.game!);
   const [npcs, setNpcs] = useState<Npc[]>(initial.npcs);
   const [events, setEvents] = useState<GameEvent[]>(initial.transcript);
@@ -750,6 +757,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
             flows={flows}
             goals={goals}
             onRefresh={refreshState}
+            onNewLife={onNewLife}
           />
         </div>
       </aside>
