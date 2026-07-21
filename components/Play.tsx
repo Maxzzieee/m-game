@@ -469,7 +469,7 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
       {/* scene ambiance wash */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 transition-[background] duration-[1500ms]"
+        className="wm-ambiance pointer-events-none fixed inset-0 transition-[background] duration-[1500ms]"
         style={{ background: `radial-gradient(900px 600px at 50% 0%, ${ambiance}, transparent 75%)` }}
       />
 
@@ -624,14 +624,14 @@ export default function Play({ initial }: { initial: Snapshot; reload: () => voi
           ) : (
             <div>
               {choices.length > 0 && (
-                <div className="mb-3 grid gap-2">
+                <div className="wm-choices mb-3 grid gap-2">
                   {choices.map((c) => (
                     <button
                       key={c.key}
                       onClick={() => void send(c.label)}
-                      className="group flex w-full cursor-pointer items-start gap-3 rounded-xl border border-void-700 bg-void-800/80 px-4 py-3 text-left shadow-card transition-all duration-200 hover:border-neon/60 hover:bg-void-800"
+                      className="wm-choice group flex w-full cursor-pointer items-start gap-3 rounded-xl border border-void-700 bg-void-800/80 px-4 py-3 text-left shadow-card transition-all duration-200 hover:border-neon/60 hover:bg-void-800"
                     >
-                      <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-neon/40 font-mono text-xs font-medium text-neon transition-colors duration-200 group-hover:bg-neon group-hover:text-ink">
+                      <span className="wm-choice-key mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-neon/40 font-mono text-xs font-medium text-neon transition-colors duration-200 group-hover:bg-neon group-hover:text-ink">
                         {c.key}
                       </span>
                       <span className="text-[15px] leading-snug text-parchment/90 group-hover:text-parchment">

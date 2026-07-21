@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Gate from "./Gate";
 import Creation from "./Creation";
 import Play from "./Play";
+import WorkMode from "./WorkMode";
 import type {
   ChoiceOption,
   Game as GameT,
@@ -59,19 +60,29 @@ export default function Game() {
     })();
   }, [loadState]);
 
+  let content: React.ReactNode = null;
   if (phase === "loading") {
-    return (
+    content = (
       <main className="grid min-h-screen place-items-center">
         <div className="animate-pulse font-mono text-xs uppercase tracking-[0.35em] text-dim">
           Loading
         </div>
       </main>
     );
+  } else if (phase === "gate") {
+    content = <Gate onAuthed={loadState} />;
+  } else if (phase === "creation") {
+    content = <Creation onCreated={loadState} />;
+  } else if (phase === "play" && snap?.game) {
+    content = <Play initial={snap} reload={loadState} />;
   }
 
-  if (phase === "gate") return <Gate onAuthed={loadState} />;
-  if (phase === "creation") return <Creation onCreated={loadState} />;
-  if (phase === "play" && snap?.game) return <Play initial={snap} reload={loadState} />;
-
-  return null;
+  // WorkMode is a fixed-position overlay + skin toggle; it sits above whatever
+  // phase renders and is available on every screen.
+  return (
+    <>
+      {content}
+      <WorkMode />
+    </>
+  );
 }

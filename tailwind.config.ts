@@ -5,30 +5,36 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        // Fonts route through skin variables so "Work Mode" can swap the whole
+        // face set (see globals.css :root[data-skin="work"]).
+        sans: ["var(--skin-font-sans)", "system-ui", "sans-serif"],
         // "serif" token kept for compatibility — now the display face (Bricolage)
-        serif: ["var(--font-display)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        serif: ["var(--skin-font-display)", "system-ui", "sans-serif"],
+        mono: ["var(--skin-font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
-        // "Majulah" palette — Singapore red & white. Crisp white paper, near-black
-        // ink, deep flag red as the hero accent (accessible: 5.4:1 text /
-        // 5.6:1 white-on-red). Token names kept so components didn't change:
-        //   void-900 = page, void-800 = raised surface, void-700 = borders/wells,
+        // Palette is variable-driven so the app can wear more than one skin
+        // (the "Majulah" game skin and the "Work Mode" documents skin) exactly
+        // like a light/dark toggle. Values live as RGB channels in globals.css
+        // (--c-*) and are wrapped here with <alpha-value> so every /opacity
+        // utility (bg-void-800/80, border-neon/60, …) keeps working. Token
+        // names are unchanged so no component markup had to move:
+        //   void-900 = page, void-800 = raised surface, void-700 = borders,
         //   parchment = primary text, dim/faint = muted text, neon = accent.
-        ink: "#ffffff", // text on red fills
+        ink: "rgb(var(--c-ink) / <alpha-value>)", // text on accent fills
         void: {
-          900: "#f6f5f3", // page — soft paper white
-          800: "#ffffff", // surface — raised white
-          700: "#e5e3df", // borders / wells
+          900: "rgb(var(--c-page) / <alpha-value>)", // page
+          800: "rgb(var(--c-surface) / <alpha-value>)", // raised surface
+          700: "rgb(var(--c-border) / <alpha-value>)", // borders / wells
         },
-        parchment: "#1a1a1a", // primary text (16.7:1)
-        dim: "#5c5c5c", // muted text (6.4:1)
-        faint: "#8a8a8a", // decorative-only text
-        neon: "#ce1126", // Singapore red — the hero accent
-        chili: "#a3122b", // negative / error (deep crimson)
-        jade: "#1f7a44", // positive / income (forest green)
-        // stat colour language — GUTS in national red ties into the theme
+        parchment: "rgb(var(--c-text) / <alpha-value>)", // primary text
+        dim: "rgb(var(--c-dim) / <alpha-value>)", // muted text
+        faint: "rgb(var(--c-faint) / <alpha-value>)", // decorative-only text
+        neon: "rgb(var(--c-accent) / <alpha-value>)", // hero accent
+        chili: "rgb(var(--c-neg) / <alpha-value>)", // negative / error
+        jade: "rgb(var(--c-pos) / <alpha-value>)", // positive / income
+        // stat colour language stays fixed across skins (also set inline via
+        // lib/ui.ts statColor(), so keeping it static keeps the two in sync).
         stat: {
           brains: "#1f6feb",
           face: "#b83280",

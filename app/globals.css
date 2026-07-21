@@ -4,6 +4,46 @@
 
 :root {
   color-scheme: light;
+
+  /* fonts route through skin vars so Work Mode can swap the whole face set */
+  --skin-font-sans: var(--font-sans);
+  --skin-font-display: var(--font-display);
+  --skin-font-mono: var(--font-mono);
+
+  /* ---- "Majulah" game skin (default) — palette as RGB channels ---- */
+  --c-ink: 255 255 255; /* text on accent fills */
+  --c-page: 246 245 243; /* page */
+  --c-surface: 255 255 255; /* raised surface */
+  --c-border: 229 227 223; /* borders / wells */
+  --c-text: 26 26 26; /* primary text */
+  --c-dim: 92 92 92; /* muted text */
+  --c-faint: 138 138 138; /* decorative text */
+  --c-accent: 206 17 38; /* Singapore red */
+  --c-neg: 163 18 43; /* error */
+  --c-pos: 31 122 68; /* income */
+}
+
+/* ============================================================= *
+ * WORK MODE — a neutral "documents app" skin. Same game, but it
+ * reads as a page of meeting notes so it's inconspicuous at work.
+ * Toggled by writing data-skin="work" on <html> (see WorkMode.tsx).
+ * ============================================================= */
+:root[data-skin="work"] {
+  color-scheme: light;
+  --skin-font-sans: Arial, "Helvetica Neue", system-ui, sans-serif;
+  --skin-font-display: Arial, "Helvetica Neue", system-ui, sans-serif;
+  --skin-font-mono: Arial, "Helvetica Neue", system-ui, sans-serif;
+
+  --c-ink: 255 255 255;
+  --c-page: 241 243 244; /* docs grey canvas */
+  --c-surface: 255 255 255; /* the white "paper" */
+  --c-border: 218 220 224;
+  --c-text: 32 33 36; /* docs near-black */
+  --c-dim: 95 99 104; /* docs grey */
+  --c-faint: 128 134 139;
+  --c-accent: 26 115 232; /* docs blue */
+  --c-neg: 217 48 37;
+  --c-pos: 24 128 56;
 }
 
 html,
@@ -50,11 +90,66 @@ body > * {
   background: transparent;
 }
 
-/* visible keyboard focus everywhere */
+/* visible keyboard focus everywhere (follows the active skin's accent) */
 :focus-visible {
-  outline: 2px solid rgba(206, 17, 38, 0.75);
+  outline: 2px solid rgb(var(--c-accent) / 0.75);
   outline-offset: 2px;
   border-radius: 6px;
+}
+
+/* ---------- Work Mode overrides ---------- */
+/* plain grey canvas: drop the red flag-band, paper grain, and leave room
+   at the top for the fake document toolbar (see WorkMode.tsx). */
+:root[data-skin="work"] body {
+  background-image: none;
+  padding-top: 46px;
+}
+:root[data-skin="work"] body::before {
+  display: none;
+}
+:root[data-skin="work"] ::selection {
+  background: rgba(26, 115, 232, 0.22);
+}
+/* the scene ambiance colour-wash would give the game away — hide it */
+:root[data-skin="work"] .wm-ambiance {
+  display: none;
+}
+/* no dramatic glows in a spreadsheet */
+:root[data-skin="work"] .animate-pulseglow {
+  animation: none;
+}
+:root[data-skin="work"] .shadow-glow {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+/* narration reads as document body text, not a novel */
+:root[data-skin="work"] .prose-narration p:first-child::first-letter {
+  float: none;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  font-family: inherit;
+}
+:root[data-skin="work"] .prose-narration strong {
+  color: inherit;
+}
+/* choices become a checklist of "action items" */
+:root[data-skin="work"] .wm-choices::before {
+  content: "Action items";
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--c-dim));
+  margin-bottom: 8px;
+}
+:root[data-skin="work"] .wm-choice {
+  box-shadow: none;
+  border-radius: 4px;
+}
+:root[data-skin="work"] .wm-choice-key {
+  border-radius: 3px;
+  color: transparent; /* hide the A/B/C letter → reads as an empty checkbox */
+  border-color: rgb(var(--c-dim) / 0.6);
 }
 
 /* ---------- narration typography ---------- */
