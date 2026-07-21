@@ -40,9 +40,13 @@ export async function maybeSummarize(game: Game): Promise<void> {
 
   const prompt = [
     "You maintain a running journal for a Singapore life-sim RPG. Fold the NEW scenes",
-    "into the EXISTING journal, producing an updated journal that is concise but keeps",
-    "every load-bearing fact: names, relationships, decisions made, promises, grudges,",
-    "reputation-shifting events, and emotional turning points. Prefer 4-8 tight sentences.",
+    "into the EXISTING journal, producing an updated journal that keeps every LOAD-BEARING",
+    "fact: names, relationships, decisions, promises, grudges, reputation shifts, and",
+    "emotional turning points.",
+    "HARD LIMIT: the whole journal must stay under ~200 words (about 12 sentences). When",
+    "folding would push it over, COMPRESS: drop stale minutiae and one-off small talk that no",
+    "longer matters, merge related facts, and keep only what still shapes the character's",
+    "life. A tight journal beats a complete one — superseded detail should be forgotten.",
     "Do not invent anything. Output ONLY the updated journal text.",
     "",
     `EXISTING JOURNAL (arc ${game.arc}):`,

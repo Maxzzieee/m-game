@@ -79,6 +79,7 @@ export function buildStateBlock(
   lastChoices: { key: string; label: string }[] = [],
   flows: MoneyFlow[] = [],
   goals: MoneyGoal[] = [],
+  focusNpcNames: string[] = [], // NPCs present/mentioned now — kept in full detail
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
@@ -97,6 +98,7 @@ export function buildStateBlock(
   const gm = game.meta as {
     scene?: { location?: string; time_of_day?: string } | null;
     moment?: { title?: string; active?: boolean } | null;
+    date_anchor_turn?: number;
   };
   if (gm?.scene && (gm.scene.location || gm.scene.time_of_day)) {
     lines.push(`SCENE: ${[gm.scene.location, gm.scene.time_of_day].filter(Boolean).join(" · ")}`);
@@ -143,6 +145,21 @@ export function buildStateBlock(
     }
   }
   lines.push(`CALENDAR: ${sgCalendar(game.ingame_date, game.age).line}`);
+  // Frozen-clock guard: a life spans years, but the clock only moves when the DM
+  // advances ingame_date. If it's been stuck for many turns (and we're not
+  // inside a Moment, where staying put is correct), force it forward.
+  if (!gm?.moment?.active) {
+    const frozenFor = game.turn_no - (gm?.date_anchor_turn ?? 0);
+    if (frozenFor > 16) {
+      lines.push(
+        `⚠ TIME IS FROZEN: the date has not moved for ${frozenFor} turns (still ${game.ingame_date}, ` +
+          `age ${game.age}). A whole life is ~250 scenes across years — you are far behind. ADVANCE ` +
+          `ingame_date THIS TURN (skip forward weeks or months as fits — end the scene, cut ahead, ` +
+          `montage if needed), age the character as time passes, and emit \`advance\` at a life-stage ` +
+          `boundary (end of secondary school, JC/poly, NS, work). Do not keep the player frozen.`,
+      );
+    }
+  }
   if (nextBeat) {
     lines.push(`NEXT BEAT: ${nextBeat.label} · ${nextBeat.date}`);
   } else {
@@ -161,12 +178,40 @@ export function buildStateBlock(
   }
 
   if (npcs.length) {
+    // Bound the roster: only the people who matter RIGHT NOW get full detail —
+    // whoever's in the scene, then strongest bonds, then most recent. The rest
+    // are listed as bare names (their detail lives in the journal/canon). An
+    // unbounded cast is the main thing that makes the model confuse and invent
+    // people, and it's a big per-turn token sink.
+    const focus = new Set(focusNpcNames.map((s) => s.toLowerCase()));
+    const ranked = [...npcs].sort((a, b) => {
+      const af = focus.has(a.name.toLowerCase()) ? 1 : 0;
+      const bf = focus.has(b.name.toLowerCase()) ? 1 : 0;
+      if (af !== bf) return bf - af;
+      const ar = Math.abs(a.relationship);
+      const br = Math.abs(b.relationship);
+      if (ar !== br) return br - ar;
+      return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+    });
+    const DETAIL = 6;
+    const shown = ranked.slice(0, DETAIL);
+    const rest = ranked.slice(DETAIL);
     lines.push("");
-    lines.push("Active NPCs (relationship meter is hidden from the player):");
-    for (const n of npcs) {
-      const motiv = n.hidden_motivation ? ` [hidden: ${n.hidden_motivation}]` : "";
+    lines.push("People who matter right now (relationship meter is hidden from the player):");
+    shown.forEach((n, i) => {
+      // hidden motivation only for the closest few / whoever's here — spoilery
+      // and token-heavy for the whole cast.
+      const keepMotiv = (i < 3 || focus.has(n.name.toLowerCase())) && n.hidden_motivation;
+      const motiv = keepMotiv ? ` [hidden: ${n.hidden_motivation}]` : "";
       lines.push(
         `- ${n.name} (${n.archetype}, ${n.status}, meter ${sign(n.relationship)}): ${n.hook}${motiv}`,
+      );
+    });
+    if (rest.length) {
+      lines.push(
+        `Others you know (pull their detail from the journal/canon if they return): ${rest
+          .map((n) => n.name)
+          .join(", ")}`,
       );
     }
   }
@@ -195,14 +240,19 @@ export function buildStateBlock(
     for (const n of worldNotes) lines.push(`- ${n}`);
   }
 
-  // Anti-linger guard — but NOT inside a Moment, where staying in the beat is
-  // the whole point (advancing the moment ≠ stalling).
-  if (lastChoices.length && !gm?.moment?.active) {
+  // Anti-repeat guard. Outside a Moment: the scene has moved, cut forward if
+  // you'd repeat. Inside a Moment: DON'T cut away (staying is the point) but
+  // still ADVANCE the beat — never re-offer the same options.
+  if (lastChoices.length) {
     lines.push("");
     lines.push(
-      "LAST TURN'S MENU — the player has now acted. The scene has MOVED. Do NOT re-offer " +
-        "these or their equivalents; if you find yourself writing the same options again, the " +
-        "scene is stalling — cut forward in time or place instead:",
+      gm?.moment?.active
+        ? "LAST BEAT'S OPTIONS — the player just acted. ADVANCE the moment (a new beat, an NPC " +
+            "reacts, the stakes tighten). Do NOT re-offer these same options, and do NOT cut " +
+            "away — stay in the present until it climaxes:"
+        : "LAST TURN'S MENU — the player has now acted. The scene has MOVED. Do NOT re-offer " +
+            "these or their equivalents; if you find yourself writing the same options again, the " +
+            "scene is stalling — cut forward in time or place instead:",
     );
     for (const c of lastChoices) lines.push(`- ${c.label}`);
   }
@@ -236,14 +286,21 @@ export function buildMemoriesBlock(memories: GameEvent[]): string {
 export function buildRecentBlock(events: GameEvent[]): string {
   if (!events.length) return "";
   const lines = ["=== RECENT SCENES (most recent last) ==="];
-  for (const e of events) {
+  // Keep the last few DM scenes verbatim (the immediate moment needs the exact
+  // words); older DM scenes collapse to their one-line summary. Player lines are
+  // short, so they stay whole. This roughly halves the per-turn recent-block
+  // tokens without losing the thread — the biggest single cost + bloat lever.
+  const FULL_DM = 5;
+  const cut = Math.max(0, events.length - FULL_DM);
+  events.forEach((e, i) => {
     if (e.role === "player") {
       lines.push(`PLAYER: ${e.prose}`);
       if (e.dice) lines.push(`  [rolled ${diceLine(e.dice)}]`);
     } else {
-      lines.push(`DM: ${e.prose}`);
+      const body = i >= cut ? e.prose : (e.summary ?? e.prose.slice(0, 140));
+      lines.push(`DM: ${body}`);
     }
-  }
+  });
   return lines.join("\n");
 }
 

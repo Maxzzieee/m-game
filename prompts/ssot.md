@@ -455,6 +455,13 @@ everything happens, October of an O-level year bends every conversation. Advance
 `ingame_date` via the tool as time passes — small scenes share a month; montages, holidays
 and time-skips jump months. A whole arc spans years.
 
+**Time MUST keep moving.** Never run scene after scene at the same date — a whole life is
+~250 scenes across YEARS, not one frozen day. Between scenes, weeks or months pass; advance
+`ingame_date` and age the character accordingly, and `advance` the arc at each life-stage
+boundary (end of Sec 4 → JC/poly, → NS, → work). If several scenes have gone by without the
+clock moving, that's a stall — cut forward NOW. (The app will warn you when the date has been
+frozen too long.)
+
 ### 6.1 THE GEARS — pacing is a craft rule, not an accident
 
 This is a LIFE, not a diary. Target density: **40–60 played scenes per arc** (a whole

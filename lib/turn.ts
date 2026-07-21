@@ -44,6 +44,7 @@ interface GameMeta {
   scene?: Scene | null; // where/when we are now (for the scene header)
   moment?: Moment | null; // the active zoomed-in set-piece, or null on the life layer
   opening_dream?: string | null; // sandbox: the founding dream the life flows from
+  date_anchor_turn?: number; // turn_no when ingame_date last advanced (frozen-clock guard)
 }
 
 export function getMeta(game: Game): GameMeta {
@@ -274,6 +275,17 @@ export async function runStoryTurn(
   const tags = deriveSearchTags(searchSeed, npcs);
   const memories = await getRelevantMemories(game.id, tags, game.turn_no);
 
+  // Who's actually on screen now: NPCs named in the last few scenes or in the
+  // player's action. These stay in full detail; the rest collapse to names.
+  const focusText = (
+    recent.slice(-4).map((e) => e.prose).join(" ") +
+    " " +
+    (mode.kind === "action" ? mode.action : "")
+  ).toLowerCase();
+  const focusNpcNames = npcs
+    .filter((n) => focusText.includes(n.name.toLowerCase()))
+    .map((n) => n.name);
+
   const stateBlock = buildStateBlock(
     game,
     npcs,
@@ -289,6 +301,7 @@ export async function runStoryTurn(
     mode.kind === "action" ? (meta.choices ?? []) : [],
     flows,
     goals,
+    focusNpcNames,
   );
   const memoriesBlock = buildMemoriesBlock(memories);
   const recentBlock = buildRecentBlock(recent);
@@ -360,6 +373,9 @@ export async function runStoryTurn(
     // flips the zoom state (undefined patch = leave the current Moment as-is).
     ...(newScene ? { scene: newScene } : {}),
     ...(momentPatch ?? {}),
+    // Frozen-clock guard: remember the turn the date last moved, so a stalled
+    // clock can be detected and forced forward (see buildStateBlock).
+    ...(updated.ingame_date !== oldDate ? { date_anchor_turn: updated.turn_no } : {}),
     // Once the sandbox founding dream has opened the life, don't re-trigger it.
     ...(mode.kind === "start" && game.mode === "sandbox" ? { opening_dream: null } : {}),
     // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
