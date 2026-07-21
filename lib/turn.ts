@@ -275,6 +275,7 @@ export async function runStoryTurn(
     diceResult: mode.kind === "resolve" ? mode.dice : null,
     nudge: mode.kind === "nudge",
     montage: mode.kind === "montage" ? { span: mode.span, focus: mode.focus } : null,
+    mode: game.mode,
   });
 
   const { text, delta } = await runDmTurn(userMessage, {
@@ -305,7 +306,10 @@ export async function runStoryTurn(
 
   // Stash awaiting-roll + structured choices (both sanitized — model output is
   // never stored raw); clear consumed roll, world notes, and (on nudge) the hook.
-  const awaitingRoll = sanitizeAwaitingRoll(delta.awaiting_roll);
+  // Sandbox (Wishgranter) has no dice: strip any roll the model emits so a
+  // pending-check prompt can never surface, whatever the DM tries.
+  const awaitingRoll =
+    game.mode === "sandbox" ? null : sanitizeAwaitingRoll(delta.awaiting_roll);
   const newBeat = sanitizeBeat(delta.next_beat, updated.ingame_date);
   // Assign the merged meta back onto `updated` — applyDelta re-selected the row
   // BEFORE this write, so without this the inline payload would ship the

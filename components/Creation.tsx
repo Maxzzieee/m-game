@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { STEREOTYPE_ORDER, STEREOTYPES } from "@/lib/constants";
-import type { Game, Stereotype } from "@/lib/types";
+import type { Game, GameMode, Stereotype } from "@/lib/types";
 import { IconArrow, IconD20 } from "./Icons";
 
-type Step = "name" | "stereotype" | "roll_ses" | "roll_looks" | "done";
+type Step = "mode" | "name" | "stereotype" | "roll_ses" | "roll_looks" | "done";
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
@@ -92,7 +92,8 @@ function FateRoll({
 }
 
 export default function Creation({ onCreated }: { onCreated: () => void }) {
-  const [step, setStep] = useState<Step>("name");
+  const [step, setStep] = useState<Step>("mode");
+  const [mode, setMode] = useState<GameMode>("story");
   const [name, setName] = useState("");
   const [pick, setPick] = useState<Stereotype | "custom" | null>(null);
   const [customText, setCustomText] = useState("");
@@ -108,8 +109,8 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
     setBusy(true);
     const body =
       pick === "custom"
-        ? { char_name: name.trim(), custom: customText.trim() }
-        : { char_name: name.trim(), stereotype: pick };
+        ? { char_name: name.trim(), custom: customText.trim(), mode }
+        : { char_name: name.trim(), stereotype: pick, mode };
     const res = await fetch("/api/character", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -136,8 +137,8 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
       </button>
       {/* progress */}
       <div className="mb-10 flex items-center justify-center gap-2" aria-hidden>
-        {["name", "stereotype", "roll_ses", "roll_looks"].map((s, i) => {
-          const order: Step[] = ["name", "stereotype", "roll_ses", "roll_looks", "done"];
+        {["mode", "name", "stereotype", "roll_ses", "roll_looks"].map((s, i) => {
+          const order: Step[] = ["mode", "name", "stereotype", "roll_ses", "roll_looks", "done"];
           const active = order.indexOf(step) >= i;
           return (
             <div
@@ -149,6 +150,68 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
           );
         })}
       </div>
+
+      {step === "mode" && (
+        <div className="animate-fadeup">
+          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-dim">
+            Before anything · choose your world
+          </p>
+          <h1 className="mt-3 font-serif text-3xl font-medium tracking-tight">
+            How do you want to <em className="text-neon">play</em>?
+          </h1>
+          <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-dim">
+            This sets the whole feel of your game. You can&apos;t change it later — start a
+            fresh life if you want the other one.
+          </p>
+
+          <div className="mt-8 grid gap-3">
+            {(
+              [
+                {
+                  id: "story" as const,
+                  title: "Story",
+                  tag: "dice · stakes · a real life",
+                  blurb:
+                    "A grounded life with real odds. You roll for what matters, you can fail, and you earn your wins across the years. Adversity is the point.",
+                },
+                {
+                  id: "sandbox" as const,
+                  title: "Sandbox — Wishgranter",
+                  tag: "no dice · wishes granted · a mirrored cost",
+                  blurb:
+                    "Say what you want and the world gives it to you — instantly, fully, however big. No rolls, no grind, no failure. But every wish has a true price, and the game names it. Go crazy; just know what it costs.",
+                },
+              ]
+            ).map((m) => {
+              const active = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setMode(m.id)}
+                  className={`cursor-pointer rounded-2xl border p-5 text-left shadow-card transition-colors duration-200 ${
+                    active ? "border-neon/70 bg-void-700/50" : "border-void-700 bg-void-800 hover:border-dim/50"
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-serif text-xl font-medium">{m.title}</span>
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-neon/80">
+                      {m.tag}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[14px] leading-relaxed text-parchment/80">{m.blurb}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setStep("name")}
+            className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neon px-4 py-3.5 font-semibold text-ink transition-all duration-200 hover:brightness-110"
+          >
+            {mode === "sandbox" ? "Enter the Wishgranter" : "Begin a life"} <IconArrow />
+          </button>
+        </div>
+      )}
 
       {step === "name" && (
         <div className="animate-fadeup">

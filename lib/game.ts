@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { db } from "./supabase";
 import { STEREOTYPES, looksTier, sesTier } from "./constants";
-import type { Game, Stereotype } from "./types";
+import type { Game, GameMode, Stereotype } from "./types";
 
 export { STEREOTYPES, looksTier, sesTier };
 
@@ -13,11 +13,18 @@ export async function createGame(input: {
   stats: { brains: number; face: number; brawn: number; guts: number };
   ses_roll: number;
   looks_roll: number;
+  mode?: GameMode; // defaults to the dice/adversity RPG
 }): Promise<Game> {
   const { data, error } = await db()
     .from("games")
     .insert({
       profile: input.profile,
+      mode: input.mode ?? "story",
+      // Sandbox (Wishgranter) begins at 18 — out of school, world wide open.
+      // Story keeps the schema defaults (13, Arc 1, Sec 1 orientation).
+      ...(input.mode === "sandbox"
+        ? { age: 18, arc: 2, arc_name: "The Open Door", ingame_date: "2021-01" }
+        : {}),
       char_name: input.char_name,
       stereotype: input.label,
       ses_roll: input.ses_roll,

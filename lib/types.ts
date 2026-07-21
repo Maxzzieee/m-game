@@ -4,6 +4,8 @@ export type Stereotype = "Mugger" | "Athlete" | "Joker" | "Pai Kia" | "Average J
 
 export type MentalState = "Fresh" | "Tired" | "Stress" | "Burnt Out" | "On Fire";
 
+export type GameMode = "story" | "sandbox";
+
 export type StatKey = "brains" | "face" | "brawn" | "guts";
 export type RepKey = "rep_academic" | "rep_social" | "rep_street" | "rep_family" | "rep_system";
 
@@ -12,6 +14,8 @@ export interface Game {
   created_at: string;
   updated_at: string;
   profile: string; // 'main' | 'p2' — which household player owns this save
+
+  mode: GameMode; // 'story' = dice/adversity RPG · 'sandbox' = Wishgranter consequence engine
 
   char_name: string;
   stereotype: string; // preset name or a custom LLM-derived label ("The Quiet Artist")

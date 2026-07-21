@@ -25,6 +25,8 @@ create table if not exists games (
 
   -- which household player owns this save ('main' | 'p2', mapped from passcode)
   profile           text not null default 'main',
+  -- game feel: 'story' = dice/adversity RPG · 'sandbox' = Wishgranter engine
+  mode              text not null default 'story',
 
   -- identity
   char_name         text not null,

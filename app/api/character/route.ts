@@ -18,6 +18,8 @@ export async function POST(req: Request) {
   const name = typeof body.char_name === "string" ? body.char_name.trim() : "";
   if (!name) return Response.json({ error: "name required" }, { status: 400 });
 
+  const mode = body.mode === "sandbox" ? "sandbox" : "story";
+
   let label: string;
   let flavour: string;
   let stats: { brains: number; face: number; brawn: number; guts: number };
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
   // The two fate rolls happen server-side (auditable, like the d20).
   const game = await createGame({
     profile: auth,
+    mode,
     char_name: name,
     label,
     flavour,

@@ -7,6 +7,7 @@ import type {
   DiceResult,
   Game,
   GameEvent,
+  GameMode,
   MoneyFlow,
   MoneyGoal,
   Npc,
@@ -81,6 +82,15 @@ export function buildStateBlock(
 ): string {
   const lines: string[] = [];
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
+  if (game.mode === "sandbox") {
+    lines.push(
+      "MODE: SANDBOX — Wishgranter. NO dice, NO DCs, NO failure. Grant every want fully " +
+        "and instantly, then attach a LIGHT cost (~half the wish — fun first; gain always " +
+        "outweighs it) per § WISHGRANTER. Never set awaiting_roll.",
+    );
+  } else {
+    lines.push("MODE: STORY");
+  }
   lines.push(
     `${game.char_name}, age ${game.age} — Arc ${game.arc}: ${game.arc_name} (${game.ingame_date})`,
   );
@@ -241,6 +251,7 @@ export function buildUserMessage(opts: {
   diceResult?: DiceResult | null;
   nudge?: boolean; // NPC-initiated scene: the world moves first
   montage?: { span: "weeks" | "months" | "beat"; focus?: string } | null;
+  mode?: GameMode; // shapes the cold-open
 }): string {
   const parts = [opts.stateBlock];
   if (opts.memoriesBlock) parts.push(opts.memoriesBlock);
@@ -290,6 +301,15 @@ export function buildUserMessage(opts: {
     parts.push(
       "Narrate what happens. If a meaningful check is warranted, present it (stat + DC) and " +
         "set awaiting_roll — then stop, do not resolve it yourself.",
+    );
+  } else if (opts.mode === "sandbox") {
+    parts.push(
+      "Open the game (SANDBOX / § WISHGRANTER). The player is 18 — just out of the school " +
+        "cage, the whole world in front of them. Cold-open somewhere that hums with " +
+        "possibility (a rooftop over the city at dusk, the last day of something, a quiet " +
+        "moment before everything). Ground it briefly, make them feel the door is wide open, " +
+        "then invite the first WANT — no dice, no stakes-of-failure, just: what do you wish " +
+        "for? Offer a few big opening directions as choices.",
     );
   } else {
     parts.push(
