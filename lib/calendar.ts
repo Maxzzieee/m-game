@@ -11,6 +11,8 @@ export interface SgCalendar {
   examYear: string | null;
   line: string; // the one-liner injected into the prompt
   shortLabel: string; // "Mar 2017" for the UI header
+  weather: string; // short UI weather word: "monsoon showers", "hazy heat"
+  festivalShort: string | null; // short UI festival tag: "National Day", "CNY"
 }
 
 const MONTHS = [
@@ -32,6 +34,24 @@ function season(month: number): string {
   if (month >= 5 && month <= 7) return "southwest monsoon — Sumatra squalls before dawn, humid";
   if (month >= 8 && month <= 10) return "inter-monsoon — still, hot, haze risk from Sumatra fires";
   return "inter-monsoon — hot, sudden thunderstorms";
+}
+
+// Short weather word for the on-screen scene header (the DM gets the long form).
+function weatherShort(month: number): string {
+  if (month === 11 || month === 12 || month === 1) return "monsoon showers";
+  if (month >= 5 && month <= 7) return "humid, pre-dawn squalls";
+  if (month >= 8 && month <= 10) return "hazy heat";
+  return "hot, sudden storms";
+}
+
+// Short festival tag for the header, or null.
+function festivalShort(year: number, month: number): string | null {
+  if (month === 1 || month === 2) return "CNY";
+  if (HARI_RAYA_MONTH[year] === month) return "Hari Raya";
+  if (month === 8) return "National Day";
+  if (month === 10 || month === 11) return "Deepavali";
+  if (month === 12) return "Christmas";
+  return null;
 }
 
 function festivals(year: number, month: number): string[] {
@@ -91,6 +111,8 @@ export function sgCalendar(ingameDate: string, age: number): SgCalendar {
     examYear: exam,
     line: bits.join(" · "),
     shortLabel: `${MONTHS[month - 1]} ${year}`,
+    weather: weatherShort(month),
+    festivalShort: festivalShort(year, month),
   };
 }
 

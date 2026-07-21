@@ -2,12 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import CharacterSheet from "./CharacterSheet";
+import SceneHeader from "./SceneHeader";
 import { DiceChip, RollOverlay, RollPrompt } from "./Dice";
 import { IconClose, IconSend, IconSheet } from "./Icons";
-import { ambianceFor, diffGame, type Choice, type DeltaToast } from "@/lib/ui";
+import { ambianceFor, diffGame, timeOfDayTint, type Choice, type DeltaToast } from "@/lib/ui";
 import { calendarAmbiance, sgCalendar } from "@/lib/calendar";
 import { MARK_BOOKKEEPING, MARK_STATE, type InlineState } from "@/lib/protocol";
-import type { DiceResult, Game, GameEvent, MoneyFlow, MoneyGoal, Npc, Pursuit } from "@/lib/types";
+import type {
+  DiceResult,
+  Game,
+  GameEvent,
+  Moment,
+  MoneyFlow,
+  MoneyGoal,
+  Npc,
+  Pursuit,
+  Scene,
+} from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 import type { Snapshot } from "./Game";
 
@@ -31,8 +42,36 @@ function renderInline(text: string): React.ReactNode[] {
   return out;
 }
 
+// While a scene is streaming, reveal it like it's being told — the text arrives
+// from the server in bursts, so we chase the target length at a reading pace
+// (catching up fast if we fall far behind). Historical scenes render in full.
+function useTypewriter(text: string, active: boolean): string {
+  const [shown, setShown] = useState(active ? 0 : text.length);
+  useEffect(() => {
+    if (!active) {
+      setShown(text.length);
+      return;
+    }
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(text.length);
+      return;
+    }
+    const id = setInterval(() => {
+      setShown((s) => {
+        if (s >= text.length) return s;
+        const behind = text.length - s;
+        const step = Math.max(2, Math.ceil(behind / 8)); // slow when close, quick when behind
+        return Math.min(text.length, s + step);
+      });
+    }, 16);
+    return () => clearInterval(id);
+  }, [text, active]);
+  return active ? text.slice(0, shown) : text;
+}
+
 function Narration({ text, streaming }: { text: string; streaming?: boolean }) {
-  const paras = text.split(/\n{2,}/).filter((p) => p.trim());
+  const visible = useTypewriter(text, !!streaming);
+  const paras = visible.split(/\n{2,}/).filter((p) => p.trim());
   return (
     <div className="prose-narration animate-fadeup">
       {paras.map((p, i) => (
@@ -44,11 +83,14 @@ function Narration({ text, streaming }: { text: string; streaming?: boolean }) {
   );
 }
 
+// The player's move, told as part of the story — a quiet, diegetic line, not a
+// chat bubble. (The chat-bubble look was a big part of the "talking to a bot"
+// feeling.)
 function PlayerBubble({ text }: { text: string }) {
   return (
-    <div className="animate-fadeup ml-auto max-w-[82%] rounded-2xl rounded-br-md border border-void-700 bg-void-800 px-4 py-3 text-[15px] leading-relaxed text-parchment/90 shadow-card">
+    <p className="animate-fadeup border-l-2 border-neon/40 pl-3.5 font-serif text-[15px] italic leading-relaxed text-parchment/75">
       {text}
-    </div>
+    </p>
   );
 }
 
@@ -128,6 +170,8 @@ export default function Play({
     initial.choices ?? null,
   );
   const [sceneHook, setSceneHook] = useState<string | null>(initial.scene_hook ?? null);
+  const [scene, setScene] = useState<Scene | null>(initial.scene ?? null);
+  const [moment, setMoment] = useState<Moment | null>(initial.moment ?? null);
   const [nextBeat, setNextBeat] = useState<{ label: string; date: string } | null>(
     initial.next_beat ?? null,
   );
@@ -180,6 +224,8 @@ export default function Play({
     setStructuredChoices(data.choices ?? null);
     setSceneHook(data.scene_hook ?? null);
     setNextBeat(data.next_beat ?? null);
+    setScene(data.scene ?? null);
+    setMoment(data.moment ?? null);
     setPursuit(data.pursuit ?? null);
     setFlows(data.flows ?? []);
     setGoals(data.goals ?? []);
@@ -201,6 +247,8 @@ export default function Play({
     setStructuredChoices(s.choices ?? null);
     setNextBeat(s.next_beat ?? null);
     setSceneHook(s.scene_hook ?? null);
+    setScene(s.scene ?? null);
+    setMoment(s.moment ?? null);
     setPursuit(s.pursuit ?? null);
     setFlows(s.flows ?? []);
     setGoals(s.goals ?? []);
@@ -466,10 +514,24 @@ export default function Play({
   const choices: Choice[] =
     busy || awaiting || !Array.isArray(structuredChoices) ? [] : structuredChoices;
 
-  // Scene ambiance: tags first, then the calendar's season/festival tint.
+  // Scene ambiance: the time of day sets the light first (strongest), then
+  // mental-state/scene tags, then the calendar's season/festival tint.
   const ambiance =
-    ambianceFor(lastDm?.tags, game) ?? calendarAmbiance(game.ingame_date) ?? "rgba(220, 150, 46, 0.08)";
+    timeOfDayTint(scene?.time_of_day) ??
+    ambianceFor(lastDm?.tags, game) ??
+    calendarAmbiance(game.ingame_date) ??
+    "rgba(220, 150, 46, 0.08)";
   const cal = sgCalendar(game.ingame_date, game.age);
+  const inMoment = !!moment?.active;
+
+  // Who's in the scene right now — NPCs named in the latest DM event's tags.
+  const presentNpcs = (() => {
+    const tags = (lastDm?.tags ?? []).map((t) => t.toLowerCase());
+    if (!tags.length) return [];
+    return npcs
+      .filter((n) => tags.some((t) => t === n.name.toLowerCase() || t.includes(n.name.toLowerCase())))
+      .map((n) => n.name);
+  })();
 
   return (
     <main className="relative mx-auto flex min-h-screen max-w-6xl gap-8 px-4 py-5 lg:px-8">
@@ -534,7 +596,20 @@ export default function Play({
           </div>
         </header>
 
-        <div className="flex-1 space-y-5 overflow-y-auto pb-2 pr-1">
+        {/* Establishing header: where/when you are, or the framed Moment banner */}
+        <SceneHeader
+          scene={scene}
+          moment={moment}
+          weather={cal.weather}
+          festival={cal.festivalShort}
+          present={presentNpcs}
+        />
+
+        <div
+          className={`flex-1 space-y-5 overflow-y-auto pb-2 pr-1 ${
+            inMoment ? "rounded-2xl border border-neon/25 bg-neon/[0.02] px-4 pt-4" : ""
+          }`}
+        >
           {events.map((e) => {
             if (e.role === "dm") return <Narration key={e.id} text={e.prose} />;
             if (e.dice) return <DiceChip key={e.id} dice={e.dice} />;
@@ -640,8 +715,10 @@ export default function Play({
                       onClick={() => void send(c.label)}
                       className="wm-choice group flex w-full cursor-pointer items-start gap-3 rounded-xl border border-void-700 bg-void-800/80 px-4 py-3 text-left shadow-card transition-all duration-200 hover:border-neon/60 hover:bg-void-800"
                     >
-                      <span className="wm-choice-key mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-neon/40 font-mono text-xs font-medium text-neon transition-colors duration-200 group-hover:bg-neon group-hover:text-ink">
-                        {c.key}
+                      {/* an action chevron, not a quiz letter (Work Mode restyles
+                          this into a checkbox via .wm-choice-key) */}
+                      <span className="wm-choice-key mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-neon/40 text-sm leading-none text-neon transition-all duration-200 group-hover:translate-x-0.5 group-hover:bg-neon group-hover:text-ink">
+                        ›
                       </span>
                       <span className="text-[15px] leading-snug text-parchment/90 group-hover:text-parchment">
                         {c.label}
@@ -682,21 +759,24 @@ export default function Play({
                 <p className="hidden font-mono text-[10px] text-faint sm:block">
                   ENTER to act · SHIFT+ENTER for a new line
                 </p>
-                <button
-                  onClick={() => setPassTimeOpen((v) => !v)}
-                  disabled={busy}
-                  aria-expanded={passTimeOpen}
-                  className={`ml-auto cursor-pointer rounded-lg border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors duration-200 disabled:cursor-default disabled:opacity-40 ${
-                    passTimeOpen
-                      ? "border-neon/60 text-neon"
-                      : "border-void-700 text-dim hover:border-dim/50 hover:text-parchment/80"
-                  }`}
-                >
-                  ⏩ PASS TIME
-                </button>
+                {/* No time-skips inside a Moment — you're living it beat by beat. */}
+                {!inMoment && (
+                  <button
+                    onClick={() => setPassTimeOpen((v) => !v)}
+                    disabled={busy}
+                    aria-expanded={passTimeOpen}
+                    className={`ml-auto cursor-pointer rounded-lg border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors duration-200 disabled:cursor-default disabled:opacity-40 ${
+                      passTimeOpen
+                        ? "border-neon/60 text-neon"
+                        : "border-void-700 text-dim hover:border-dim/50 hover:text-parchment/80"
+                    }`}
+                  >
+                    ⏩ PASS TIME
+                  </button>
+                )}
               </div>
 
-              {passTimeOpen && (
+              {!inMoment && passTimeOpen && (
                 <div className="animate-fadeup mt-3 rounded-2xl border border-void-700 bg-void-800 p-4 shadow-card">
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-dim">
                     Let the weeks fold — the world may interrupt

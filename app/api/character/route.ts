@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   if (!name) return Response.json({ error: "name required" }, { status: 400 });
 
   const mode = body.mode === "sandbox" ? "sandbox" : "story";
+  const dream = typeof body.dream === "string" ? body.dream.trim() : "";
 
   let label: string;
   let flavour: string;
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
   const game = await createGame({
     profile: auth,
     mode,
+    dream,
     char_name: name,
     label,
     flavour,

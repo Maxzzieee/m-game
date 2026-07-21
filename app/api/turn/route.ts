@@ -80,6 +80,8 @@ export async function POST(req: Request) {
           choices: meta.choices ?? null,
           next_beat: meta.next_beat ?? null,
           scene_hook: meta.scene_hook ?? null,
+          scene: meta.scene ?? null,
+          moment: meta.moment ?? null,
           pursuit,
           flows,
           goals,

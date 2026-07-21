@@ -9,10 +9,12 @@ import type {
   ChoiceOption,
   Game as GameT,
   GameEvent,
+  Moment,
   MoneyFlow,
   MoneyGoal,
   Npc,
   Pursuit,
+  Scene,
 } from "@/lib/types";
 import type { AwaitingRoll } from "@/lib/turn";
 
@@ -25,6 +27,8 @@ export interface Snapshot {
   choices?: ChoiceOption[] | null;
   scene_hook?: string | null;
   next_beat?: { label: string; date: string } | null;
+  scene?: Scene | null;
+  moment?: Moment | null;
   pursuit?: Pursuit | null;
   flows?: MoneyFlow[];
   goals?: MoneyGoal[];

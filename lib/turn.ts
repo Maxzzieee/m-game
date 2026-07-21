@@ -23,7 +23,7 @@ import { accrueIncome, applyFlowOps, applyGoalOps } from "./money";
 import { captureError } from "./log";
 import { rollCheck } from "./dice";
 import { db } from "./supabase";
-import type { ChoiceOption, DiceResult, Game } from "./types";
+import type { ChoiceOption, DiceResult, Game, Moment, Scene } from "./types";
 
 export interface AwaitingRoll {
   stat: string;
@@ -41,6 +41,9 @@ interface GameMeta {
   choices?: ChoiceOption[] | null;
   scene_hook?: string | null;
   next_beat?: { label: string; date: string } | null;
+  scene?: Scene | null; // where/when we are now (for the scene header)
+  moment?: Moment | null; // the active zoomed-in set-piece, or null on the life layer
+  opening_dream?: string | null; // sandbox: the founding dream the life flows from
 }
 
 export function getMeta(game: Game): GameMeta {
@@ -82,6 +85,29 @@ function sanitizeBeat(
   if (typeof b.date !== "string" || !/^\d{4}-\d{2}$/.test(b.date)) return null;
   if (b.date < currentDate) return null;
   return { label: b.label.trim().slice(0, 80), date: b.date };
+}
+
+function sanitizeScene(raw: unknown): Scene | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const location = typeof s.location === "string" ? s.location.trim().slice(0, 80) : "";
+  const time = typeof s.time_of_day === "string" ? s.time_of_day.trim().slice(0, 60) : "";
+  if (!location && !time) return null;
+  return { location, time_of_day: time };
+}
+
+// Returns the state patch the DM's `moment` op implies, or undefined if none.
+// enter → activate a Moment; resolve → clear it (zoom back out).
+function sanitizeMomentPatch(raw: unknown): { moment: Moment | null } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const m = raw as Record<string, unknown>;
+  if (m.action === "resolve") return { moment: null };
+  if (m.action === "enter") {
+    const title = typeof m.title === "string" && m.title.trim() ? m.title.trim().slice(0, 80) : "The moment";
+    const kind = typeof m.kind === "string" && m.kind.trim() ? m.kind.trim().slice(0, 24) : "scene";
+    return { moment: { title, kind, active: true } };
+  }
+  return undefined;
 }
 
 function sanitizeAwaitingRoll(raw: unknown): AwaitingRoll | null {
@@ -276,6 +302,8 @@ export async function runStoryTurn(
     nudge: mode.kind === "nudge",
     montage: mode.kind === "montage" ? { span: mode.span, focus: mode.focus } : null,
     mode: game.mode,
+    activeMoment: meta.moment?.active ? meta.moment : null,
+    openingDream: game.mode === "sandbox" ? (meta.opening_dream ?? null) : null,
   });
 
   const { text, delta } = await runDmTurn(userMessage, {
@@ -311,6 +339,8 @@ export async function runStoryTurn(
   const awaitingRoll =
     game.mode === "sandbox" ? null : sanitizeAwaitingRoll(delta.awaiting_roll);
   const newBeat = sanitizeBeat(delta.next_beat, updated.ingame_date);
+  const newScene = sanitizeScene(delta.scene);
+  const momentPatch = sanitizeMomentPatch(delta.moment); // enter/resolve, or undefined
   // Assign the merged meta back onto `updated` — applyDelta re-selected the row
   // BEFORE this write, so without this the inline payload would ship the
   // previous turn's choices alongside this turn's prose.
@@ -326,6 +356,12 @@ export async function runStoryTurn(
         ? { next_beat: null }
         : {}),
     ...(mode.kind === "nudge" ? { scene_hook: null } : {}),
+    // Scene header updates when the place/time moves; a Moment enter/resolve
+    // flips the zoom state (undefined patch = leave the current Moment as-is).
+    ...(newScene ? { scene: newScene } : {}),
+    ...(momentPatch ?? {}),
+    // Once the sandbox founding dream has opened the life, don't re-trigger it.
+    ...(mode.kind === "start" && game.mode === "sandbox" ? { opening_dream: null } : {}),
     // Arc transition grants one +1 stat pick (rule: "adjust ONE stat at arc change").
     ...(delta.advance ? { pending_stat_boost: true } : {}),
   }) as Record<string, unknown>;

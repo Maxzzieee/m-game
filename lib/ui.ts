@@ -36,6 +36,37 @@ export function ambianceFor(tags: string[] | undefined, game: Game): string | nu
   return null;
 }
 
+// Pull an hour (0-23) out of a free-text time string, or null.
+function parseHour(t: string): number | null {
+  const ampm = t.match(/(\d{1,2})\s*(?::\d{2})?\s*(am|pm)/);
+  if (ampm) {
+    let h = parseInt(ampm[1], 10) % 12;
+    if (ampm[2] === "pm") h += 12;
+    return h;
+  }
+  const h24 = t.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
+  if (h24) return parseInt(h24[1], 10);
+  return null;
+}
+
+// Time-of-day mood tint from a free-text time string ("Friday, ~9pm", "just
+// before dawn", "lunch break"). Stronger than the tag/calendar wash — this is
+// the primary "you are somewhere, now" light in the room.
+export function timeOfDayTint(timeOfDay: string | undefined | null): string | null {
+  if (!timeOfDay) return null;
+  const t = timeOfDay.toLowerCase();
+  const h = parseHour(t);
+  if (/dawn|sunrise|daybreak|first light/.test(t) || (h !== null && h >= 5 && h < 8))
+    return "rgba(255, 176, 120, 0.14)"; // warm amber dawn
+  if (/dusk|sunset|golden hour|evening|twilight/.test(t) || (h !== null && h >= 17 && h < 20))
+    return "rgba(240, 138, 66, 0.15)"; // amber dusk
+  if (/night|midnight|late|small hours/.test(t) || (h !== null && (h >= 20 || h < 5)))
+    return "rgba(48, 68, 122, 0.18)"; // deep night blue
+  if (/noon|midday|afternoon|lunch|morning|daytime|\bday\b/.test(t) || (h !== null && h >= 8 && h < 17))
+    return "rgba(126, 174, 224, 0.10)"; // bright day
+  return null;
+}
+
 // ---- choice parsing ----------------------------------------------------------
 // The DM offers "A) ... / B) ... / C) ..." choices in prose. Surface them as
 // tappable buttons. Handles "A)", "**A)**", "A." and "- A)" shapes.

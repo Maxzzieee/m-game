@@ -92,6 +92,21 @@ export function buildStateBlock(
   } else {
     lines.push("MODE: STORY");
   }
+  // Scene + Moment orientation, so the DM always knows where/when we are and
+  // whether we're zoomed into a lived set-piece.
+  const gm = game.meta as {
+    scene?: { location?: string; time_of_day?: string } | null;
+    moment?: { title?: string; active?: boolean } | null;
+  };
+  if (gm?.scene && (gm.scene.location || gm.scene.time_of_day)) {
+    lines.push(`SCENE: ${[gm.scene.location, gm.scene.time_of_day].filter(Boolean).join(" · ")}`);
+  }
+  if (gm?.moment?.active) {
+    lines.push(
+      `INSIDE A MOMENT: "${gm.moment.title}" — play it out present-tense, beat-by-beat, ` +
+        "embodied choices only; emit moment:{action:'resolve'} at its climax to zoom out.",
+    );
+  }
   lines.push(
     `${game.char_name}, age ${game.age} — Arc ${game.arc}: ${game.arc_name} (${game.ingame_date})`,
   );
@@ -180,7 +195,9 @@ export function buildStateBlock(
     for (const n of worldNotes) lines.push(`- ${n}`);
   }
 
-  if (lastChoices.length) {
+  // Anti-linger guard — but NOT inside a Moment, where staying in the beat is
+  // the whole point (advancing the moment ≠ stalling).
+  if (lastChoices.length && !gm?.moment?.active) {
     lines.push("");
     lines.push(
       "LAST TURN'S MENU — the player has now acted. The scene has MOVED. Do NOT re-offer " +
@@ -253,6 +270,8 @@ export function buildUserMessage(opts: {
   nudge?: boolean; // NPC-initiated scene: the world moves first
   montage?: { span: "weeks" | "months" | "beat"; focus?: string } | null;
   mode?: GameMode; // shapes the cold-open
+  activeMoment?: { title: string } | null; // inside a zoomed-in Moment right now
+  openingDream?: string | null; // sandbox: the founding dream to open the life from
 }): string {
   const parts = [opts.stateBlock];
   if (opts.memoriesBlock) parts.push(opts.memoriesBlock);
@@ -292,6 +311,21 @@ export function buildUserMessage(opts: {
         "NPC-initiated moment). Land the intrusion, let it breathe, then hand control back " +
         "to the player with choices.",
     );
+  } else if (opts.activeMoment) {
+    // INSIDE a zoomed-in Moment — play it beat-by-beat (§ INHABIT THE MOMENT).
+    parts.push(
+      `You are INSIDE a MOMENT: "${opts.activeMoment.title}".` +
+        (opts.playerAction.trim() ? ` The player just did: ${opts.playerAction.trim()}.` : "") +
+        (opts.diceResult ? ` (The die came up: ${diceLine(opts.diceResult)} — honour it in the beat.)` : ""),
+    );
+    parts.push(
+      "Stay fully in the PRESENT TENSE, second person, moment-to-moment. Do NOT cut away, " +
+        "montage, summarize, or skip time. Sustain the senses; let anyone here speak and react " +
+        "turn-by-turn with subtext. Every choice MUST be a concrete physical action or line in " +
+        "THIS instant — never an abstract direction. Play it beat-by-beat until it reaches its " +
+        "natural climax; then, and ONLY then, emit moment:{action:'resolve'} to zoom back out " +
+        "to the life layer and bank the consequences.",
+    );
   } else if (opts.diceResult) {
     parts.push(
       `The player rolled. Result: ${diceLine(opts.diceResult)}. Narrate the consequence, ` +
@@ -300,8 +334,26 @@ export function buildUserMessage(opts: {
   } else if (opts.playerAction.trim()) {
     parts.push(`Player action: ${opts.playerAction.trim()}`);
     parts.push(
-      "Narrate what happens. If a meaningful check is warranted, present it (stat + DC) and " +
-        "set awaiting_roll — then stop, do not resolve it yourself.",
+      "Narrate it in the PRESENT, embodied — second person, at least one live physical " +
+        "sensation, and stay IN the moment rather than reporting it from outside. Let anyone " +
+        "present speak and react. End on a live beat: offer embodied choices or ask what they do. " +
+        "If the player is committing to LIVE something big (a match, an audition, a build, a " +
+        "confession, a pitch, a first time), OFFER to play it out — choices like 'Play it out' vs " +
+        "'Skip to how it lands' — and when they choose to play it out, emit " +
+        "moment:{action:'enter', title, kind} and begin the scene in the present. " +
+        "If a meaningful check is warranted, present it (stat + DC) and set awaiting_roll — then " +
+        "stop, do not resolve it yourself.",
+    );
+  } else if (opts.mode === "sandbox" && opts.openingDream) {
+    // Sandbox founding dream (A9): open the life already oriented around it.
+    parts.push(
+      `Open the game (SANDBOX / § WISHGRANTER). The player is 18 and their FOUNDING DREAM is: ` +
+        `"${opts.openingDream}". Open the life already oriented around this want — ground them in ` +
+        "a vivid present-tense moment at 18 with the dream alive and close enough to touch (name " +
+        "the place, the time, one sensation). You already HAVE the dream (skip DECLARE): run the " +
+        "wish loop on it — WARN the counteractive cost (~half, light), then offer take-it / " +
+        "leave-it choices. If they take it, you'll next offer to play out the first MOMENT of " +
+        "living it. Do not resolve it this turn.",
     );
   } else if (opts.mode === "sandbox") {
     parts.push(

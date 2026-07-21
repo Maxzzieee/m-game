@@ -6,6 +6,21 @@ export type MentalState = "Fresh" | "Tired" | "Stress" | "Burnt Out" | "On Fire"
 
 export type GameMode = "story" | "sandbox";
 
+// Where/when the current scene is set — surfaced to the player as a scene header.
+export interface Scene {
+  location: string; // "Jalan Besar Stadium", "the void deck", "a rooftop in Seoul"
+  time_of_day: string; // "Friday, ~9pm", "just before dawn", "lunch break"
+}
+
+// A MOMENT is a bounded, zoomed-in set-piece the player plays out beat-by-beat
+// (the match, the audition, the demo day) before the game zooms back out to the
+// life/summary layer. Lives in games.meta.moment while active.
+export interface Moment {
+  title: string; // "The Match", "SM audition, round 2"
+  kind: string; // match | audition | build | confrontation | pitch | first-time | scene
+  active: boolean;
+}
+
 export type StatKey = "brains" | "face" | "brawn" | "guts";
 export type RepKey = "rep_academic" | "rep_social" | "rep_street" | "rep_family" | "rep_system";
 
@@ -173,6 +188,8 @@ export interface TurnDelta {
   choices?: ChoiceOption[];
   ingame_date?: string; // absolute "YYYY-MM", monotonic
   next_beat?: { label: string; date: string } | null; // the next dated story milestone
+  scene?: { location?: string; time_of_day?: string } | null; // where/when we are now
+  moment?: { action: "enter" | "resolve"; title?: string; kind?: string } | null; // zoom in/out
   awaiting_roll?: {
     stat: string;
     dc: number;

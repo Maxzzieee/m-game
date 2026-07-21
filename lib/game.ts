@@ -14,6 +14,7 @@ export async function createGame(input: {
   ses_roll: number;
   looks_roll: number;
   mode?: GameMode; // defaults to the dice/adversity RPG
+  dream?: string; // sandbox: the founding dream the life flows from
 }): Promise<Game> {
   const { data, error } = await db()
     .from("games")
@@ -35,7 +36,12 @@ export async function createGame(input: {
       face: input.stats.face,
       brawn: input.stats.brawn,
       guts: input.stats.guts,
-      meta: { flavour: input.flavour },
+      meta: {
+        flavour: input.flavour,
+        ...(input.mode === "sandbox" && input.dream?.trim()
+          ? { opening_dream: input.dream.trim().slice(0, 200) }
+          : {}),
+      },
     })
     .select("*")
     .single();

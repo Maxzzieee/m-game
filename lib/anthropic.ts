@@ -48,7 +48,7 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
       choices: {
         type: "array",
         description:
-          "2-4 options for the player when the scene is open-ended. The app renders these as buttons — do NOT also print an A/B/C/D menu in your prose; end the prose on the dramatic beat instead. Omit when awaiting a roll or when the scene needs a free-text answer.",
+          "2-4 options for the player when the scene is open-ended. The app renders these as buttons — do NOT also print an A/B/C/D menu in your prose; end the prose on the dramatic beat instead. Omit when awaiting a roll or when the scene needs a free-text answer. INSIDE A MOMENT (see `moment`) every choice MUST be a concrete physical action or line in this exact instant ('Nutmeg him and go', 'Hold the eye contact', 'Ship the hotfix now') — never an abstract direction. Outside a Moment they can be life-level directions.",
         items: {
           type: "object",
           properties: {
@@ -59,6 +59,31 @@ export const RECORD_TURN_TOOL: Anthropic.Tool = {
             },
           },
           required: ["key", "label"],
+        },
+      },
+      scene: {
+        type: ["object", "null"],
+        description:
+          "Where/when this scene is set — shown to the player as a scene header. Send when the location or time of day CHANGES (a new place, a time-skip, a cut). Omit if unchanged.",
+        properties: {
+          location: { type: "string", description: "e.g. 'Jalan Besar Stadium', 'the void deck'." },
+          time_of_day: {
+            type: "string",
+            description: "e.g. 'Friday, ~9pm', 'just before dawn', 'lunch break'.",
+          },
+        },
+      },
+      moment: {
+        type: ["object", "null"],
+        description:
+          "The MOMENT (zoom) control. A Moment is a bounded set-piece the player PLAYS OUT beat-by-beat in the present tense (the match, the audition, the demo day, the confession) instead of it being summarized. Send `{action:'enter', title, kind}` when the player chooses to LIVE a big moment — from then on stay in the present, no time-skips, embodied choices, NPCs reacting turn-by-turn, until it climaxes. Send `{action:'resolve'}` at the climax to zoom back out to the life layer and bank the consequences. Only one Moment at a time.",
+        properties: {
+          action: { type: "string", enum: ["enter", "resolve"] },
+          title: { type: "string", description: "Short: 'The Match', 'SM audition — round 2'." },
+          kind: {
+            type: "string",
+            description: "match | audition | build | confrontation | pitch | first-time | scene",
+          },
         },
       },
       ingame_date: {

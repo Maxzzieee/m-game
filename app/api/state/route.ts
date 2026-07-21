@@ -33,6 +33,8 @@ export async function GET() {
     choices: meta.choices ?? null,
     scene_hook: meta.scene_hook ?? null,
     next_beat: meta.next_beat ?? null,
+    scene: meta.scene ?? null,
+    moment: meta.moment ?? null,
     pursuit,
     flows,
     goals,

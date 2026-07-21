@@ -18,6 +18,36 @@ const PURSUIT_STAGE_NAMES = [
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
+// How this one person feels about you — a small bond bar, centered at neutral.
+function bondLabel(v: number): string {
+  if (v >= 4) return "close";
+  if (v >= 2) return "warm";
+  if (v >= 1) return "friendly";
+  if (v === 0) return "neutral";
+  if (v <= -4) return "hostile";
+  if (v <= -2) return "cold";
+  return "wary";
+}
+function Bond({ n }: { n: number }) {
+  const v = Math.max(-5, Math.min(5, n));
+  const pct = (Math.abs(v) / 5) * 50; // fills out from the centre, half-width max
+  const pos = v >= 0;
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-void-700">
+        <div className="absolute left-1/2 top-0 h-full w-px bg-faint/50" />
+        <div
+          className={`absolute top-0 h-full ${pos ? "bg-jade" : "bg-chili"}`}
+          style={{ left: pos ? "50%" : `${50 - pct}%`, width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-14 text-right font-mono text-[9px] uppercase tracking-wider text-faint">
+        {bondLabel(v)}
+      </span>
+    </div>
+  );
+}
+
 const STAT_BAR: Record<string, string> = {
   Brains: "#1f6feb",
   Face: "#b83280",
@@ -273,6 +303,7 @@ export default function CharacterSheet({
               {n.hook && (
                 <p className="mt-0.5 font-serif text-xs italic leading-snug text-dim">{n.hook}</p>
               )}
+              <Bond n={n.relationship} />
             </div>
           ))}
         </div>

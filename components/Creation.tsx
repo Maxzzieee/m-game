@@ -5,7 +5,7 @@ import { STEREOTYPE_ORDER, STEREOTYPES } from "@/lib/constants";
 import type { Game, GameMode, Stereotype } from "@/lib/types";
 import { IconArrow, IconD20 } from "./Icons";
 
-type Step = "mode" | "name" | "stereotype" | "roll_ses" | "roll_looks" | "done";
+type Step = "mode" | "name" | "dream" | "stereotype" | "roll_ses" | "roll_looks" | "done";
 
 const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
@@ -95,6 +95,7 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
   const [step, setStep] = useState<Step>("mode");
   const [mode, setMode] = useState<GameMode>("story");
   const [name, setName] = useState("");
+  const [dream, setDream] = useState(""); // sandbox: the founding dream
   const [pick, setPick] = useState<Stereotype | "custom" | null>(null);
   const [customText, setCustomText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,10 +108,11 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
   async function createAndRoll() {
     if (!name.trim() || !pick || !customReady || busy) return;
     setBusy(true);
+    const dreamArg = mode === "sandbox" ? dream.trim() : undefined;
     const body =
       pick === "custom"
-        ? { char_name: name.trim(), custom: customText.trim(), mode }
-        : { char_name: name.trim(), stereotype: pick, mode };
+        ? { char_name: name.trim(), custom: customText.trim(), mode, dream: dreamArg }
+        : { char_name: name.trim(), stereotype: pick, mode, dream: dreamArg };
     const res = await fetch("/api/character", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -139,7 +141,9 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
       <div className="mb-10 flex items-center justify-center gap-2" aria-hidden>
         {["mode", "name", "stereotype", "roll_ses", "roll_looks"].map((s, i) => {
           const order: Step[] = ["mode", "name", "stereotype", "roll_ses", "roll_looks", "done"];
-          const active = order.indexOf(step) >= i;
+          // the sandbox-only "dream" step shares the "name" slot on the bar
+          const pStep = step === "dream" ? "name" : step;
+          const active = order.indexOf(pStep) >= i;
           return (
             <div
               key={s}
@@ -234,16 +238,54 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && name.trim() && setStep("stereotype")}
+            onKeyDown={(e) =>
+              e.key === "Enter" && name.trim() && setStep(mode === "sandbox" ? "dream" : "stereotype")
+            }
             placeholder="e.g. Wei Jie, Farhan, Priya..."
             className="mt-2 w-full rounded-xl border border-void-700 bg-void-800 px-4 py-3.5 font-serif text-lg shadow-card outline-none transition-colors duration-200 focus:border-neon/70"
           />
           <button
-            onClick={() => setStep("stereotype")}
+            onClick={() => setStep(mode === "sandbox" ? "dream" : "stereotype")}
             disabled={!name.trim()}
             className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neon px-4 py-3.5 font-semibold text-ink transition-all duration-200 hover:brightness-110 disabled:cursor-default disabled:opacity-40"
           >
             That&apos;s me <IconArrow />
+          </button>
+        </div>
+      )}
+
+      {step === "dream" && (
+        <div className="animate-fadeup">
+          <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-dim">
+            The Wishgranter · your founding dream
+          </p>
+          <h1 className="mt-3 font-serif text-3xl font-medium tracking-tight">
+            So — what do you want your <em className="text-neon">life</em> to be?
+          </h1>
+          <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-dim">
+            Say it plain, in your own words. This is the dream the whole life flows from — the
+            world will grant it, name what it costs, and let you decide whether to live it.
+          </p>
+          <textarea
+            autoFocus
+            value={dream}
+            onChange={(e) => setDream(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && dream.trim()) {
+                e.preventDefault();
+                setStep("stereotype");
+              }
+            }}
+            rows={3}
+            placeholder="e.g. I want to be a footballer. / I want to build something the whole world uses. / I want to be a movie star."
+            className="mt-6 w-full resize-none rounded-xl border border-void-700 bg-void-800 px-4 py-3.5 font-serif text-lg leading-relaxed shadow-card outline-none transition-colors duration-200 placeholder:text-faint/70 focus:border-neon/70"
+          />
+          <button
+            onClick={() => setStep("stereotype")}
+            disabled={!dream.trim()}
+            className="mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-neon px-4 py-3.5 font-semibold text-ink transition-all duration-200 hover:brightness-110 disabled:cursor-default disabled:opacity-40"
+          >
+            That&apos;s the dream <IconArrow />
           </button>
         </div>
       )}
