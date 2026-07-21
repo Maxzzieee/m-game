@@ -84,9 +84,10 @@ export function buildStateBlock(
   lines.push("=== GAME STATE (authoritative — trust this over your own memory) ===");
   if (game.mode === "sandbox") {
     lines.push(
-      "MODE: SANDBOX — Wishgranter. NO dice, NO DCs, NO failure. Grant every want fully " +
-        "and instantly, then attach a LIGHT cost (~half the wish — fun first; gain always " +
-        "outweighs it) per § WISHGRANTER. Never set awaiting_roll.",
+      "MODE: SANDBOX — Wishgranter. NO dice/DCs/failure. When the player speaks a want, " +
+        "DON'T grant it yet: WARN them of the counteractive cost (~half the wish) and offer " +
+        "take-it / leave-it choices; GRANT only if they accept. Never pre-offer dreams as " +
+        "menu options. Never set awaiting_roll. See § WISHGRANTER.",
     );
   } else {
     lines.push("MODE: STORY");
@@ -308,8 +309,8 @@ export function buildUserMessage(opts: {
         "cage, the whole world in front of them. Cold-open somewhere that hums with " +
         "possibility (a rooftop over the city at dusk, the last day of something, a quiet " +
         "moment before everything). Ground it briefly, make them feel the door is wide open, " +
-        "then invite the first WANT — no dice, no stakes-of-failure, just: what do you wish " +
-        "for? Offer a few big opening directions as choices.",
+        "then invite them to name their first WANT in their own words — do NOT offer a menu " +
+        "of dreams. End on the open question and let them speak it into the free-text box.",
     );
   } else {
     parts.push(
