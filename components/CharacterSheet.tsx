@@ -140,14 +140,17 @@ export default function CharacterSheet({
             }`}
           >
             {game.mental_state}
-            {game.mental_state === "On Fire" && ` · ${game.on_fire_checks} left`}
+            {game.mode !== "sandbox" &&
+              game.mental_state === "On Fire" &&
+              ` · ${game.on_fire_checks} left`}
           </span>
-          {game.confirm_chop && (
+          {/* Dice-engine perks — meaningless in the no-dice Wishgranter mode. */}
+          {game.mode !== "sandbox" && game.confirm_chop && (
             <span className="rounded-full border border-neon/50 bg-neon/5 px-3 py-1 font-mono text-[11px] tracking-wider text-neon">
               CONFIRM PLUS CHOP
             </span>
           )}
-          {game.heng > 0 && (
+          {game.mode !== "sandbox" && game.heng > 0 && (
             <span
               className="rounded-full border border-chili/50 bg-chili/5 px-3 py-1 font-mono text-[11px] tracking-wider text-chili"
               title="Reroll tokens — spend one after a roll settles; second roll stands"
@@ -158,12 +161,15 @@ export default function CharacterSheet({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
-        <Stat label="Brains" n={game.brains} />
-        <Stat label="Face" n={game.face} />
-        <Stat label="Brawn" n={game.brawn} />
-        <Stat label="Guts" n={game.guts} />
-      </div>
+      {/* Stats are d20 modifiers — the Wishgranter rolls no dice, so hide them. */}
+      {game.mode !== "sandbox" && (
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+          <Stat label="Brains" n={game.brains} />
+          <Stat label="Face" n={game.face} />
+          <Stat label="Brawn" n={game.brawn} />
+          <Stat label="Guts" n={game.guts} />
+        </div>
+      )}
 
       {pursuit && (
         <div className="rounded-xl border border-neon/40 bg-neon/5 p-4">

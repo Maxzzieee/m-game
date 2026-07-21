@@ -491,7 +491,9 @@ export default function Play({
         />
       )}
 
-      {pendingBoost && !streaming && <GrowthModal game={game} onPicked={refreshState} />}
+      {pendingBoost && !streaming && game.mode !== "sandbox" && (
+        <GrowthModal game={game} onPicked={refreshState} />
+      )}
 
       {/* consequence toasts */}
       {toasts.length > 0 && (
