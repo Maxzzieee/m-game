@@ -23,6 +23,7 @@ export async function GET() {
     checks[key] = process.env[key] ? "set" : "MISSING";
   }
   checks.APP_PASSCODE_2 = process.env.APP_PASSCODE_2 ? "set" : "unset (single player)";
+  checks.APP_PASSCODE_3 = process.env.APP_PASSCODE_3 ? "set" : "unset (no third player)";
 
   // DB reachability + schema drift (a missing migration is the classic outage)
   let errors: Awaited<ReturnType<typeof recentErrors>> = [];
@@ -62,6 +63,7 @@ export async function GET() {
     Object.entries(checks).every(
       ([k, v]) =>
         k === "APP_PASSCODE_2" ||
+        k === "APP_PASSCODE_3" ||
         (!v.startsWith("ERROR") && !v.startsWith("MISSING") && !v.startsWith("UNKNOWN") && v !== "MISSING"),
     ) && errors.length === 0;
 

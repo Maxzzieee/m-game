@@ -38,12 +38,16 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 // Which profile does this passcode unlock? null = wrong passcode.
+// Each passcode maps to its own profile (separate lives): APP_PASSCODE → 'main',
+// APP_PASSCODE_2 → 'p2', APP_PASSCODE_3 → 'p3'. Add more the same way.
 export function profileForPasscode(input: string): string | null {
   const main = process.env.APP_PASSCODE;
   if (!main) throw new Error("Missing APP_PASSCODE. Copy .env.example to .env.local.");
   if (safeEqual(input, main)) return "main";
   const p2 = process.env.APP_PASSCODE_2;
   if (p2 && safeEqual(input, p2)) return "p2";
+  const p3 = process.env.APP_PASSCODE_3;
+  if (p3 && safeEqual(input, p3)) return "p3";
   return null;
 }
 

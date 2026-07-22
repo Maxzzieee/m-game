@@ -28,7 +28,7 @@ export interface Game {
   id: string;
   created_at: string;
   updated_at: string;
-  profile: string; // 'main' | 'p2' — which household player owns this save
+  profile: string; // 'main' | 'p2' | 'p3' — which household player owns this save
 
   mode: GameMode; // 'story' = dice/adversity RPG · 'sandbox' = Wishgranter consequence engine
 
