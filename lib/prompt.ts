@@ -145,18 +145,32 @@ export function buildStateBlock(
     }
   }
   lines.push(`CALENDAR: ${sgCalendar(game.ingame_date, game.age).line}`);
-  // Frozen-clock guard: a life spans years, but the clock only moves when the DM
-  // advances ingame_date. If it's been stuck for many turns (and we're not
-  // inside a Moment, where staying put is correct), force it forward.
+  // Pacing guard: a life spans YEARS, but the clock only moves when the DM
+  // advances ingame_date/arc. Two ways it stalls — the date freezes, or the life
+  // runs in slow motion (many scenes, barely any time passing). Detect both and
+  // force a hard skip. (Not inside a Moment, where staying put is the point.)
   if (!gm?.moment?.active) {
     const frozenFor = game.turn_no - (gm?.date_anchor_turn ?? 0);
-    if (frozenFor > 16) {
+    const scenes = Math.floor(game.turn_no / 2.5); // ~2.5 turns per played scene
+    const startAge = game.mode === "sandbox" ? 18 : 13;
+    const expectedAge = startAge + Math.floor(scenes / 14); // a school year ≈ 8-12 scenes
+    const yearsBehind = expectedAge - game.age;
+    // Which arc that age belongs to (story life-stages).
+    const arcForAge = (a: number) => (a <= 16 ? 1 : a <= 18 ? 2 : a <= 20 ? 3 : a <= 25 ? 4 : 5);
+    const expectedArc = arcForAge(expectedAge);
+    if (yearsBehind >= 2 || frozenFor > 12) {
+      const lead =
+        yearsBehind >= 2
+          ? `PACING ALERT: ~${scenes} scenes into this life but still age ${game.age}, ${game.ingame_date}, Arc ${game.arc} (${game.arc_name}). At this pace the character should be about AGE ${expectedAge}${expectedArc > game.arc ? `, in ARC ${expectedArc}` : ""}. You are running the life in EXTREME slow motion.`
+          : `TIME IS FROZEN: the date hasn't moved for ${frozenFor} turns (still ${game.ingame_date}).`;
       lines.push(
-        `⚠ TIME IS FROZEN: the date has not moved for ${frozenFor} turns (still ${game.ingame_date}, ` +
-          `age ${game.age}). A whole life is ~250 scenes across years — you are far behind. ADVANCE ` +
-          `ingame_date THIS TURN (skip forward weeks or months as fits — end the scene, cut ahead, ` +
-          `montage if needed), age the character as time passes, and emit \`advance\` at a life-stage ` +
-          `boundary (end of secondary school, JC/poly, NS, work). Do not keep the player frozen.`,
+        `⚠ ${lead} MOVE HARD THIS TURN: end the scene and SKIP FORWARD — jump ${
+          yearsBehind >= 3 ? "a year or more" : "months"
+        }, age the character up toward ${expectedAge}, and ${
+          expectedArc > game.arc
+            ? `emit \`advance\` to reach Arc ${expectedArc} (Sec→JC/poly→NS→work) — do it NOW, in steps if needed`
+            : "emit `advance` at the next life-stage boundary"
+        }. A whole school year is only 8-12 scenes — compress ruthlessly, montage the gaps, and do NOT keep crawling day-to-day.`,
       );
     }
   }
