@@ -219,6 +219,11 @@ const ARC_NAMES: Record<number, string> = {
   4: "The Working World",
   5: "The Long Game",
 };
+// Girls aren't conscripted, so their Arc 3 isn't NS.
+function arcName(arc: number, gender?: string): string {
+  if (arc === 3 && gender === "girl") return "The Wider World";
+  return ARC_NAMES[arc] ?? `Arc ${arc}`;
+}
 
 // Mechanical pacing backstop. A prompt nudge asks the DM to move time; this makes
 // the app DO it. When a life is running FAR behind its scene budget (many scenes
@@ -240,10 +245,11 @@ async function maybeForcePacing(game: Game): Promise<string | null> {
   const oldArc = game.arc;
   const newArc = arcForAge(newAge);
 
+  const gender = (game.meta as { gender?: string })?.gender;
   const patch: Record<string, unknown> = { age: newAge, ingame_date: newDate };
   if (newArc > oldArc) {
     patch.arc = newArc;
-    patch.arc_name = ARC_NAMES[newArc] ?? `Arc ${newArc}`;
+    patch.arc_name = arcName(newArc, gender);
     patch.heng = Math.min(3, (game.heng ?? 2) + 1); // arc-up reward, as normal
   }
   await db().from("games").update(patch).eq("id", game.id);

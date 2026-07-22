@@ -99,7 +99,18 @@ export function buildStateBlock(
     scene?: { location?: string; time_of_day?: string } | null;
     moment?: { title?: string; active?: boolean } | null;
     date_anchor_turn?: number;
+    gender?: "girl" | "boy";
   };
+  if (gm?.gender === "girl") {
+    lines.push(
+      "GENDER: girl — she/her. Write an authentic young woman's life in Singapore. IMPORTANT: " +
+        "women are NOT conscripted — she does NOT do NS/Tekong. At ~18 she goes to JC, poly, " +
+        "university, or work; her late-teen / early-20s years are study, first jobs, and " +
+        "relationships, never the army.",
+    );
+  } else if (gm?.gender === "boy") {
+    lines.push("GENDER: boy — he/him.");
+  }
   if (gm?.scene && (gm.scene.location || gm.scene.time_of_day)) {
     lines.push(`SCENE: ${[gm.scene.location, gm.scene.time_of_day].filter(Boolean).join(" · ")}`);
   }

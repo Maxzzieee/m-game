@@ -20,6 +20,7 @@ export async function POST(req: Request) {
 
   const mode = body.mode === "sandbox" ? "sandbox" : "story";
   const dream = typeof body.dream === "string" ? body.dream.trim() : "";
+  const gender = body.gender === "girl" ? "girl" : "boy";
 
   let label: string;
   let flavour: string;
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
     profile: auth,
     mode,
     dream,
+    gender,
     char_name: name,
     label,
     flavour,

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { db } from "./supabase";
 import { STEREOTYPES, looksTier, sesTier } from "./constants";
-import type { Game, GameMode, Stereotype } from "./types";
+import type { Game, GameMode, Gender, Stereotype } from "./types";
 
 export { STEREOTYPES, looksTier, sesTier };
 
@@ -15,6 +15,7 @@ export async function createGame(input: {
   looks_roll: number;
   mode?: GameMode; // defaults to the dice/adversity RPG
   dream?: string; // sandbox: the founding dream the life flows from
+  gender?: Gender; // shapes pronouns + the life path (girls aren't conscripted)
 }): Promise<Game> {
   const { data, error } = await db()
     .from("games")
@@ -38,6 +39,7 @@ export async function createGame(input: {
       guts: input.stats.guts,
       meta: {
         flavour: input.flavour,
+        ...(input.gender ? { gender: input.gender } : {}),
         ...(input.mode === "sandbox" && input.dream?.trim()
           ? { opening_dream: input.dream.trim().slice(0, 200) }
           : {}),

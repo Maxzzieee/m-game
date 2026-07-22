@@ -6,6 +6,8 @@ export type MentalState = "Fresh" | "Tired" | "Stress" | "Burnt Out" | "On Fire"
 
 export type GameMode = "story" | "sandbox";
 
+export type Gender = "girl" | "boy"; // shapes pronouns + the life path (NS divergence)
+
 // Where/when the current scene is set — surfaced to the player as a scene header.
 export interface Scene {
   location: string; // "Jalan Besar Stadium", "the void deck", "a rooftop in Seoul"

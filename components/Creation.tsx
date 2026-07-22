@@ -95,6 +95,7 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
   const [step, setStep] = useState<Step>("mode");
   const [mode, setMode] = useState<GameMode>("story");
   const [name, setName] = useState("");
+  const [gender, setGender] = useState<"girl" | "boy">("boy");
   const [dream, setDream] = useState(""); // sandbox: the founding dream
   const [pick, setPick] = useState<Stereotype | "custom" | null>(null);
   const [customText, setCustomText] = useState("");
@@ -111,8 +112,8 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
     const dreamArg = mode === "sandbox" ? dream.trim() : undefined;
     const body =
       pick === "custom"
-        ? { char_name: name.trim(), custom: customText.trim(), mode, dream: dreamArg }
-        : { char_name: name.trim(), stereotype: pick, mode, dream: dreamArg };
+        ? { char_name: name.trim(), custom: customText.trim(), mode, dream: dreamArg, gender }
+        : { char_name: name.trim(), stereotype: pick, mode, dream: dreamArg, gender };
     const res = await fetch("/api/character", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -244,6 +245,26 @@ export default function Creation({ onCreated }: { onCreated: () => void }) {
             placeholder="e.g. Wei Jie, Farhan, Priya..."
             className="mt-2 w-full rounded-xl border border-void-700 bg-void-800 px-4 py-3.5 font-serif text-lg shadow-card outline-none transition-colors duration-200 focus:border-neon/70"
           />
+
+          <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.25em] text-dim">
+            You&apos;re a…
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            {(["girl", "boy"] as const).map((g) => (
+              <button
+                key={g}
+                onClick={() => setGender(g)}
+                className={`cursor-pointer rounded-xl border py-3 font-serif text-lg capitalize shadow-card transition-colors duration-200 ${
+                  gender === g
+                    ? "border-neon/70 bg-void-700/50 text-parchment"
+                    : "border-void-700 bg-void-800 text-dim hover:border-dim/50"
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+
           <button
             onClick={() => setStep(mode === "sandbox" ? "dream" : "stereotype")}
             disabled={!name.trim()}

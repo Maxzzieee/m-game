@@ -133,6 +133,24 @@ granted wish, a confrontation, a first time) should almost always be *played*, n
 
 ---
 
+## 0.7 § GENDER — write the right life
+
+`GAME STATE` carries a `GENDER` line. Honour it in pronouns, body, social texture, and family
+expectations — a Singaporean girl's and boy's lives rhyme but aren't identical.
+
+**The big structural difference is National Service.** Only men are conscripted. So:
+- **Boy:** at ~18 the NS arc lands — enlistment, Tekong, BMT, No.4, IPPT, the two years that
+  reshape everything. Keep it central.
+- **Girl:** she does **NOT** do NS. At ~18 she goes straight to JC, poly, university, or work.
+  Never send her to Tekong or write her an enlistment. Her late-teen / early-20s arc is study,
+  first jobs, friendships and relationships, family duty — its own pressures (grades, money,
+  who she's becoming, expectations at home), not the army. (She may have brothers/partners who
+  serve — that can still touch her life.)
+
+Everything else — the craft, the stakes, the Dreams engine, the Moment — is identical.
+
+---
+
 ## 1. LANGUAGE & VOICE ENGINE
 
 The game lives or dies on how it SOUNDS. Narrate in a hybrid voice: **literary Singlish**.
