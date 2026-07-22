@@ -343,13 +343,21 @@ export function buildUserMessage(opts: {
   mode?: GameMode; // shapes the cold-open
   activeMoment?: { title: string } | null; // inside a zoomed-in Moment right now
   openingDream?: string | null; // sandbox: the founding dream to open the life from
+  pacingJump?: string | null; // app already advanced the clock/arc — narrate the leap
 }): string {
   const parts = [opts.stateBlock];
   if (opts.memoriesBlock) parts.push(opts.memoriesBlock);
   if (opts.recentBlock) parts.push(opts.recentBlock);
 
   parts.push("=== THIS TURN ===");
-  if (opts.montage) {
+  if (opts.pacingJump) {
+    // The app has already advanced the clock/age/arc — this overrides everything
+    // else; the DM narrates the forced leap.
+    parts.push(opts.pacingJump);
+    if (opts.playerAction.trim()) {
+      parts.push(`(The player's last action, to nod to before the leap: ${opts.playerAction.trim()})`);
+    }
+  } else if (opts.montage) {
     const target =
       opts.montage.span === "beat"
         ? "up to the NEXT BEAT's date (stop at its doorstep — the beat itself is played live)"

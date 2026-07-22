@@ -208,6 +208,70 @@ type Mode =
   | { kind: "nudge" } // NPC-initiated scene: the world moves first
   | { kind: "montage"; span: "weeks" | "months" | "beat"; focus?: string }; // pass time
 
+// Story life-stage → arc number (mirrors the pacing guard in prompt.ts).
+function arcForAge(a: number): number {
+  return a <= 16 ? 1 : a <= 18 ? 2 : a <= 20 ? 3 : a <= 25 ? 4 : 5;
+}
+const ARC_NAMES: Record<number, string> = {
+  1: "The Orientation",
+  2: "The Crossroads",
+  3: "The Tekong Years",
+  4: "The Working World",
+  5: "The Long Game",
+};
+
+// Mechanical pacing backstop. A prompt nudge asks the DM to move time; this makes
+// the app DO it. When a life is running FAR behind its scene budget (many scenes
+// played, barely any time passed), advance the clock/age/arc in code and hand the
+// DM a montage instruction it can't ignore. Returns the jump note, or null.
+async function maybeForcePacing(game: Game): Promise<string | null> {
+  const meta = getMeta(game);
+  if (meta.moment?.active) return null; // never yank someone out of a lived Moment
+  const scenes = Math.floor(game.turn_no / 2.5);
+  const startAge = game.mode === "sandbox" ? 18 : 13;
+  const expectedAge = startAge + Math.floor(scenes / 14); // a school year ≈ 8-12 scenes
+  if (expectedAge - game.age < 3) return null; // mild lag is the prompt guard's job
+
+  const newAge = Math.min(expectedAge, game.age + 6); // decisive, but not absurd
+  const years = newAge - game.age;
+  if (years <= 0) return null;
+  const [y, m] = game.ingame_date.split("-");
+  const newDate = `${Number(y) + years}-${m ?? "01"}`;
+  const oldArc = game.arc;
+  const newArc = arcForAge(newAge);
+
+  const patch: Record<string, unknown> = { age: newAge, ingame_date: newDate };
+  if (newArc > oldArc) {
+    patch.arc = newArc;
+    patch.arc_name = ARC_NAMES[newArc] ?? `Arc ${newArc}`;
+    patch.heng = Math.min(3, (game.heng ?? 2) + 1); // arc-up reward, as normal
+  }
+  await db().from("games").update(patch).eq("id", game.id);
+  Object.assign(game, patch);
+
+  const metaPatch: GameMeta = { date_anchor_turn: game.turn_no };
+  if (newArc > oldArc) {
+    metaPatch.pending_stat_boost = true; // arc-up grants a +1 stat pick, as normal
+    try {
+      await closeArcCanon(game, oldArc); // distill the arc we're leaving into canon
+    } catch {
+      /* best-effort */
+    }
+  }
+  game.meta = (await setMeta(game.id, metaPatch)) as Record<string, unknown>;
+
+  return (
+    `TIME HAS JUMPED — the app advanced the clock because the life was far behind pace. ` +
+    `It is now ${newDate}; the character is AGE ${newAge}` +
+    (newArc > oldArc ? `, now in Arc ${newArc} — ${patch.arc_name}` : "") +
+    `. Narrate the leap: briefly nod to the player's last action, then MONTAGE the intervening ` +
+    `${years === 1 ? "year" : `${years} years`} in 2-4 vivid sentences (how the school stage, ` +
+    `friendships, the body and the family changed), then open a fresh present-tense scene in ` +
+    `this new period with choices. Do NOT emit \`advance\` (already done); do NOT keep the ` +
+    `character at the old age.`
+  );
+}
+
 // Orchestrate one story turn: assemble DB-owned context, run the DM (streaming
 // prose via onText), persist the event + apply the structured delta, and fold
 // old scenes into the journal. Returns the refreshed game.
@@ -251,6 +315,11 @@ export async function runStoryTurn(
       tags: ["montage"],
     });
   }
+
+  // Mechanical pacing backstop: if the life is far behind its scene budget, the
+  // app advances the clock/age/arc HERE (before context is gathered, so the new
+  // arc's journal/canon is loaded) and hands the DM an un-ignorable montage note.
+  const pacingJump = mode.kind === "action" || mode.kind === "start" ? await maybeForcePacing(game) : null;
 
   const [npcs, seeds, recent] = await Promise.all([
     getActiveNpcs(game.id),
@@ -317,6 +386,7 @@ export async function runStoryTurn(
     mode: game.mode,
     activeMoment: meta.moment?.active ? meta.moment : null,
     openingDream: game.mode === "sandbox" ? (meta.opening_dream ?? null) : null,
+    pacingJump,
   });
 
   const { text, delta } = await runDmTurn(userMessage, {
